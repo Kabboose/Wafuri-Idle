@@ -1,4 +1,5 @@
 import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "./tokenStore";
+import { refreshAccessToken } from "./refreshAccessToken";
 
 export type PlayerState = {
   id: string;
@@ -89,6 +90,28 @@ export async function bootstrapAuth(): Promise<BootstrapAuthResult> {
         refreshToken: existingRefreshToken ?? "",
         playerState: existingState.playerState
       };
+    }
+
+    if (existingState.unauthorized && existingRefreshToken) {
+      try {
+        const refreshedAccessToken = await refreshAccessToken();
+
+        if (!refreshedAccessToken) {
+          throw new Error("Refresh failed");
+        }
+
+        const refreshedState = await fetchPlayerState(refreshedAccessToken);
+
+        if (!refreshedState.unauthorized && refreshedState.playerState) {
+          return {
+            accessToken: refreshedAccessToken,
+            refreshToken: existingRefreshToken,
+            playerState: refreshedState.playerState
+          };
+        }
+      } catch {
+        // Fall through to guest bootstrap when refresh recovery is unavailable.
+      }
     }
 
     clearTokens();

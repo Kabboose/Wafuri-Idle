@@ -1,4 +1,5 @@
-import { clearTokens, getAccessToken } from "../auth/tokenStore";
+import { refreshAccessToken } from "../auth/refreshAccessToken";
+import { getAccessToken } from "../auth/tokenStore";
 
 type ApiSuccessResponse<T> = {
   success: true;
@@ -14,7 +15,7 @@ export class AuthError extends Error {
 }
 
 /** Performs an authenticated API request and unwraps the standard success envelope. */
-async function apiRequest<T>(path: string, method: "GET" | "POST", body?: unknown): Promise<T> {
+async function apiRequest<T>(path: string, method: "GET" | "POST", body?: unknown, hasRetried = false): Promise<T> {
   const accessToken = getAccessToken();
 
   if (!accessToken) {
@@ -31,8 +32,17 @@ async function apiRequest<T>(path: string, method: "GET" | "POST", body?: unknow
   });
 
   if (response.status === 401) {
-    clearTokens();
-    throw new AuthError();
+    if (hasRetried) {
+      throw new AuthError();
+    }
+
+    const refreshedAccessToken = await refreshAccessToken();
+
+    if (!refreshedAccessToken) {
+      throw new AuthError("Unauthenticated");
+    }
+
+    return apiRequest<T>(path, method, body, true);
   }
 
   if (!response.ok) {

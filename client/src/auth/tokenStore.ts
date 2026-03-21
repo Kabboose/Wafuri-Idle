@@ -1,5 +1,5 @@
-export const ACCESS_TOKEN_KEY = "wafuri-idle-access-token";
-export const REFRESH_TOKEN_KEY = "wafuri-idle-refresh-token";
+const ACCESS_TOKEN_KEY = "wafuri-idle-access-token";
+const REFRESH_TOKEN_KEY = "wafuri-idle-refresh-token";
 
 /** Returns the persisted access token, if one exists. */
 export function getAccessToken(): string | null {

@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 
 import { createGuestSession } from "../services/auth/createGuestSession.js";
+import { issueRefreshedAccessToken } from "../services/auth/issueRefreshedAccessToken.js";
 import { issueAuthSession } from "../services/auth/issueAuthSession.js";
 import { login } from "../services/auth/login.js";
 import { requestPasswordReset } from "../services/auth/requestPasswordReset.js";
@@ -89,6 +90,29 @@ export const loginController: RequestHandler = async (request, response, next): 
         ...loginResult,
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Exchanges a valid refresh token for a new short-lived access token. */
+export const refreshSessionController: RequestHandler = async (request, response, next): Promise<void> => {
+  try {
+    const nowMs = Date.now();
+    const { refreshToken } = request.body as {
+      refreshToken: string;
+    };
+    const result = await issueRefreshedAccessToken({
+      refreshToken,
+      nowMs
+    });
+
+    response.json({
+      success: true,
+      data: {
+        accessToken: result.accessToken
       }
     });
   } catch (error) {

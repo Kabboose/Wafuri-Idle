@@ -38,3 +38,30 @@ export async function createSession(input: CreateSessionInput): Promise<SessionR
   return mapSessionRecord(session);
 }
 
+/** Finds a non-revoked, non-expired persisted session row by its hashed refresh token. */
+export async function findByRefreshTokenHash(tokenHash: string, nowMs: number): Promise<SessionRecord | null> {
+  const session = await prisma.session.findFirst({
+    where: {
+      tokenHash,
+      revokedAt: null,
+      expiresAt: {
+        gt: new Date(nowMs)
+      }
+    }
+  });
+
+  return session ? mapSessionRecord(session) : null;
+}
+
+/** Deletes sessions whose expiry time has passed and returns the number removed. */
+export async function deleteExpiredSessions(nowMs: number): Promise<number> {
+  const result = await prisma.session.deleteMany({
+    where: {
+      expiresAt: {
+        lt: new Date(nowMs)
+      }
+    }
+  });
+
+  return result.count;
+}

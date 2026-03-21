@@ -1,5 +1,4 @@
 import { createHash, randomBytes } from "crypto";
-
 import jwt, { type SignOptions } from "jsonwebtoken";
 
 import { config } from "../../config/index.js";
