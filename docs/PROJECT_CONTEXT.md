@@ -105,6 +105,7 @@ Current Auth/API Flows:
 - `POST /auth/upgrade`
   - requires auth
   - upgrades the current guest account into a registered account
+  - preserves the existing linked player record
   - issues fresh access token + refresh token
 - `POST /auth/request-password-reset`
   - generates and stores a hashed reset token
@@ -175,6 +176,7 @@ Current Frontend State:
   - login screen
   - authenticated game screen
   - guest upgrade modal
+- The game screen exposes a `Save Progress` action that opens the guest-upgrade modal.
 - The visual layer now has a simple dark-mode theme across the app.
 - The game screen displays mana, mana generation rate, and team power, and polls the server for updated state.
 

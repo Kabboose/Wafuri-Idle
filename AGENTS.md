@@ -54,6 +54,8 @@ Rules:
   - `authenticated`
 - Guest account creation must happen only from explicit user action.
 - Do not auto-create guest accounts during bootstrap or refresh fallback.
+- `POST /auth/upgrade` is an authenticated endpoint and must use the authenticated API client.
+- Guest-account upgrade must preserve the existing linked player and must not create a second player record.
 - Access-token refresh may issue a new access token, but must not rotate refresh tokens unless that work is explicitly planned.
 - Failed authenticated requests must return control to the auth state machine instead of leaving stale authenticated UI mounted.
 - `Account` represents identity and authentication.
@@ -258,6 +260,7 @@ Do not log sensitive secrets or raw JWTs.
 - Keep client-side number formatting safe for string-based large values.
 - Keep API handling aligned with the success/error envelope.
 - Keep auth logic in auth modules/hooks, not inside UI components.
+- Keep authenticated auth actions on the authenticated API client path and public auth actions on the public API client path.
 - `App` should render from auth state only and should not duplicate bootstrap logic.
 - Authenticated screens must report auth failures back into the auth state machine.
 - Guest creation, login, refresh, and upgrade flows must go through shared auth helpers or hooks rather than ad hoc component fetch calls.
