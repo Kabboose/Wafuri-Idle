@@ -1,7 +1,6 @@
+import { GAME_CONFIG } from "../config/index.js";
 import type { PlayerMutation, PlayerState } from "../utils/playerTypes.js";
 import { calculateManaGain, getEffectiveRate, RATE_UPGRADE_INCREMENT } from "../utils/fixedPoint.js";
-
-const TEAM_POWER_UPGRADE_GAIN = 1;
 
 export function getEffectiveManaRate(player: Pick<PlayerState, "manaGenerationRate" | "teamPower">): bigint {
   return getEffectiveRate(player.manaGenerationRate, player.teamPower);
@@ -24,6 +23,6 @@ export function applyUpgrade(player: PlayerState, now: number): PlayerMutation {
   return {
     ...progressed,
     manaGenerationRate: progressed.manaGenerationRate + RATE_UPGRADE_INCREMENT,
-    teamPower: progressed.teamPower + TEAM_POWER_UPGRADE_GAIN
+    teamPower: progressed.teamPower + GAME_CONFIG.upgrade.teamPowerGain
   };
 }

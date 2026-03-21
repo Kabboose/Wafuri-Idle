@@ -1,9 +1,11 @@
-const SCALE = 1_000_000n;
-const MULTIPLIER_SCALE = 10_000n;
-const TEAM_POWER_BONUS_BPS = 200n;
+import { GAME_CONFIG } from "../config/index.js";
 
-export const BASE_RATE = SCALE;
-export const RATE_UPGRADE_INCREMENT = 500_000n;
+const SCALE = BigInt(GAME_CONFIG.idle.fixedScale);
+const MULTIPLIER_SCALE = BigInt(GAME_CONFIG.idle.multiplierScale);
+const TEAM_POWER_BONUS_BPS = BigInt(GAME_CONFIG.idle.teamPowerBonusBps);
+
+export const BASE_RATE = BigInt(GAME_CONFIG.idle.baseRate);
+export const RATE_UPGRADE_INCREMENT = BigInt(GAME_CONFIG.upgrade.manaGenerationRateIncrement);
 
 export function parseFixed(value: string): bigint {
   return BigInt(value);

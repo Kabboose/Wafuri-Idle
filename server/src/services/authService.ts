@@ -1,8 +1,7 @@
 import jwt, { type SignOptions } from "jsonwebtoken";
 
-import { config } from "../config/index.js";
+import { config, GAME_CONFIG } from "../config/index.js";
 import { createPlayer } from "../db/playerRepository.js";
-import { BASE_RATE } from "../utils/fixedPoint.js";
 
 export type GuestAuthResponse = {
   token: string;
@@ -12,9 +11,9 @@ export type GuestAuthResponse = {
 export async function createGuestSession(): Promise<GuestAuthResponse> {
   const now = new Date();
   const player = await createPlayer({
-    mana: "0",
-    manaGenerationRate: BASE_RATE.toString(),
-    teamPower: 10,
+    mana: GAME_CONFIG.player.startingMana,
+    manaGenerationRate: GAME_CONFIG.idle.baseRate,
+    teamPower: GAME_CONFIG.player.startingTeamPower,
     lastUpdateTimestamp: now
   });
 

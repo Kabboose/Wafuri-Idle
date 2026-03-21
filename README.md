@@ -17,6 +17,8 @@ Backend layout:
 - `server/src/config`: environment-backed configuration
 - `server/src/utils`: shared pure helpers and serialization
 
+Game balance and feature toggles live in [server/src/config/index.ts](/home/alexzervas/gitrepos/Wafuri-Idle/server/src/config/index.ts) via `GAME_CONFIG` and `FEATURES`, so values can be rebalanced centrally and moved to DB-backed config later without rewriting services.
+
 ## Phase 2 Features
 
 - Player state persists in PostgreSQL instead of process memory
