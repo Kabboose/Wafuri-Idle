@@ -7,15 +7,66 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AccountType {
+  GUEST
+  REGISTERED
+}
+
+model Account {
+  id                   String               @id @default(uuid()) @db.Uuid
+  type                 AccountType          @default(GUEST)
+  username             String?
+  usernameNormalized   String?              @unique
+  email                String?
+  emailNormalized      String?              @unique
+  passwordHash         String?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  player               Player?
+  sessions             Session[]
+  passwordResetTokens  PasswordResetToken[]
+
+  @@map("accounts")
+}
+
 model Player {
-  id                  String   @id @default(uuid()) @db.Uuid
-  mana                String   @default("0")
-  manaGenerationRate  String   @default("1000000")
-  teamPower           Int      @default(10)
-  version             Int      @default(0)
+  id                    String   @id @default(uuid()) @db.Uuid
+  accountId             String   @unique @db.Uuid
+  mana                  String   @default("0")
+  manaGenerationRate    String   @default("1000000")
+  teamPower             Int      @default(10)
+  version               Int      @default(0)
   lastUpdateTimestampMs DateTime @default(now())
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  account               Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@map("players")
+}
+
+model Session {
+  id           String    @id @default(uuid()) @db.Uuid
+  accountId    String    @db.Uuid
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  account      Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("sessions")
+}
+
+model PasswordResetToken {
+  id           String    @id @default(uuid()) @db.Uuid
+  accountId    String    @db.Uuid
+  tokenHash    String    @unique
+  expiresAt    DateTime
+  usedAt       DateTime?
+  createdAt    DateTime  @default(now())
+  account      Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@map("password_reset_tokens")
 }
