@@ -8,7 +8,11 @@ export type SerializedPlayerState = {
   updatedAt: string;
 };
 
-export type SessionRecord = {
+export type AuthenticatedUser = {
   playerId: string;
 };
 
+export type AuthTokenPayload = AuthenticatedUser & {
+  iat?: number;
+  exp?: number;
+};

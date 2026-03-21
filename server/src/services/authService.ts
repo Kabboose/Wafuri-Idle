@@ -1,8 +1,7 @@
-import { v4 as uuidv4 } from "uuid";
+import jwt, { type SignOptions } from "jsonwebtoken";
 
 import { config } from "../config/index.js";
 import { createPlayer } from "../db/playerRepository.js";
-import { createSession } from "./cacheService.js";
 
 export type GuestAuthResponse = {
   token: string;
@@ -18,8 +17,9 @@ export async function createGuestSession(): Promise<GuestAuthResponse> {
     lastUpdateTimestamp: now
   });
 
-  const token = uuidv4();
-  await createSession(token, { playerId: player.id }, config.sessionTtlSeconds);
+  const token = jwt.sign({ playerId: player.id }, config.jwtSecret, {
+    expiresIn: config.jwtExpiresIn as SignOptions["expiresIn"]
+  });
 
   return {
     token,

@@ -1,12 +1,10 @@
+import jwt from "jsonwebtoken";
 import type { NextFunction, Request, Response } from "express";
 
-import { getSession } from "../services/cacheService.js";
+import { config } from "../config/index.js";
+import type { AuthTokenPayload } from "../utils/playerTypes.js";
 
-type AuthenticatedRequest = Request & {
-  playerId?: string;
-};
-
-export async function requireAuth(request: AuthenticatedRequest, response: Response, next: NextFunction): Promise<void> {
+export async function requireAuth(request: Request, response: Response, next: NextFunction): Promise<void> {
   try {
     const authorizationHeader = request.header("Authorization");
 
@@ -16,18 +14,24 @@ export async function requireAuth(request: AuthenticatedRequest, response: Respo
     }
 
     const token = authorizationHeader.slice("Bearer ".length);
-    const session = await getSession(token);
+    const payload = jwt.verify(token, config.jwtSecret) as AuthTokenPayload;
 
-    if (!session) {
-      response.status(401).json({ error: "Invalid session token" });
+    if (!payload.playerId) {
+      response.status(401).json({ error: "Invalid token payload" });
       return;
     }
 
-    request.playerId = session.playerId;
+    request.user = {
+      playerId: payload.playerId
+    };
+
     next();
   } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      response.status(401).json({ error: "Invalid bearer token" });
+      return;
+    }
+
     next(error);
   }
 }
-
-export type { AuthenticatedRequest };
