@@ -19,9 +19,9 @@ function generateRawToken(): string {
 
 /**
  * Generates and stores a single-use password reset token for the account matching the provided email.
- * Returns the raw token for the email delivery layer to send separately.
+ * Accepts the captured request time and returns the raw token for the email delivery layer to send separately.
  */
-export async function requestPasswordReset(email: string): Promise<string> {
+export async function requestPasswordReset(email: string, now: Date): Promise<string> {
   const emailNormalized = normalizeEmail(email);
   const account = await findAccountByEmail(emailNormalized);
 
@@ -31,7 +31,7 @@ export async function requestPasswordReset(email: string): Promise<string> {
 
   const rawToken = generateRawToken();
   const tokenHash = hashToken(rawToken);
-  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+  const expiresAt = new Date(now.getTime() + PASSWORD_RESET_TTL_MS);
 
   await storeResetToken({
     accountId: account.id,
@@ -41,4 +41,3 @@ export async function requestPasswordReset(email: string): Promise<string> {
 
   return rawToken;
 }
-

@@ -1,6 +1,5 @@
 import { GAME_CONFIG } from "../../config/index.js";
-import { createAccount } from "../../db/accountRepo.js";
-import { createPlayer } from "../../db/playerRepo.js";
+import { createGuestAccountIdentity } from "../../db/identityRepo.js";
 
 export type GuestAccountResult = {
   accountId: string;
@@ -9,23 +8,23 @@ export type GuestAccountResult = {
 
 /**
  * Creates a guest account and its linked player record using the repository layer only.
- * Accepts no input and returns the created account/player identifiers as plain data.
+ * Accepts the captured request time and returns the created account/player identifiers as plain data.
  */
-export async function createGuestAccount(): Promise<GuestAccountResult> {
-  const now = new Date();
-  const account = await createAccount({
-    type: "GUEST"
-  });
-  const player = await createPlayer({
-    accountId: account.id,
-    mana: GAME_CONFIG.player.startingMana,
-    manaGenerationRate: GAME_CONFIG.idle.baseRate,
-    teamPower: GAME_CONFIG.player.startingTeamPower,
-    lastUpdateTimestampMs: now
+export async function createGuestAccount(input: { now: Date }): Promise<GuestAccountResult> {
+  const identity = await createGuestAccountIdentity({
+    account: {
+      type: "GUEST"
+    },
+    player: {
+      mana: GAME_CONFIG.player.startingMana,
+      manaGenerationRate: GAME_CONFIG.idle.baseRate,
+      teamPower: GAME_CONFIG.player.startingTeamPower,
+      lastUpdateTimestampMs: input.now
+    }
   });
 
   return {
-    accountId: account.id,
-    playerId: player.id
+    accountId: identity.account.id,
+    playerId: identity.player.id
   };
 }

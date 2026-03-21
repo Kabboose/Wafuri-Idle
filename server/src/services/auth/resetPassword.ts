@@ -7,6 +7,7 @@ import { applyPasswordReset } from "../../db/passwordResetRepo.js";
 export type ResetPasswordInput = {
   token: string;
   newPassword: string;
+  now: Date;
 };
 
 function hashToken(token: string): string {
@@ -20,7 +21,7 @@ function hashToken(token: string): string {
 export async function resetPassword(input: ResetPasswordInput): Promise<void> {
   const tokenHash = hashToken(input.token);
   const passwordHash = await argon2.hash(input.newPassword);
-  const resetResult = await applyPasswordReset(tokenHash, passwordHash, new Date());
+  const resetResult = await applyPasswordReset(tokenHash, passwordHash, input.now);
 
   if (!resetResult) {
     throw new Error("Invalid or expired password reset token");

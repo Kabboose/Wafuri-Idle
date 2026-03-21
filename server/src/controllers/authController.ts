@@ -1,33 +1,21 @@
 import type { RequestHandler } from "express";
 
-import { createSession } from "../db/sessionRepo.js";
-import { createGuestAccount } from "../services/auth/createGuestAccount.js";
+import { createGuestSession } from "../services/auth/createGuestSession.js";
+import { issueAuthSession } from "../services/auth/issueAuthSession.js";
 import { login } from "../services/auth/login.js";
 import { requestPasswordReset } from "../services/auth/requestPasswordReset.js";
 import { resetPassword } from "../services/auth/resetPassword.js";
 import { upgradeCurrentAccount } from "../services/auth/upgradeCurrentAccount.js";
-import { createAuthTokens } from "../utils/tokenUtils.js";
 
 /** Creates an anonymous player session and returns the auth token payload. */
 export const createGuestSessionController: RequestHandler = async (_request, response, next): Promise<void> => {
   try {
-    const guestAccount = await createGuestAccount();
-    const tokens = createAuthTokens(guestAccount.playerId);
-
-    await createSession({
-      accountId: guestAccount.accountId,
-      tokenHash: tokens.refreshTokenHash,
-      expiresAt: tokens.refreshTokenExpiresAt
-    });
+    const now = new Date();
+    const guestSession = await createGuestSession(now);
 
     response.json({
       success: true,
-      data: {
-        accountId: guestAccount.accountId,
-        playerId: guestAccount.playerId,
-        accessToken: tokens.accessToken,
-        refreshToken: tokens.refreshToken
-      }
+      data: guestSession
     });
   } catch (error) {
     next(error);
@@ -37,6 +25,7 @@ export const createGuestSessionController: RequestHandler = async (_request, res
 /** Upgrades the authenticated guest account into a registered account. */
 export const upgradeAccountController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
+    const now = new Date();
     const playerId = request.user?.playerId;
 
     if (!playerId) {
@@ -55,12 +44,10 @@ export const upgradeAccountController: RequestHandler = async (request, response
       password,
       email
     });
-    const tokens = createAuthTokens(playerId);
-
-    await createSession({
+    const tokens = await issueAuthSession({
       accountId: upgradeResult.accountId,
-      tokenHash: tokens.refreshTokenHash,
-      expiresAt: tokens.refreshTokenExpiresAt
+      playerId,
+      now
     });
 
     response.json({
@@ -80,6 +67,7 @@ export const upgradeAccountController: RequestHandler = async (request, response
 /** Authenticates a registered account and returns a signed auth token plus linked ids. */
 export const loginController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
+    const now = new Date();
     const { username, password } = request.body as {
       username: string;
       password: string;
@@ -88,12 +76,10 @@ export const loginController: RequestHandler = async (request, response, next): 
       username,
       password
     });
-    const tokens = createAuthTokens(loginResult.playerId);
-
-    await createSession({
+    const tokens = await issueAuthSession({
       accountId: loginResult.accountId,
-      tokenHash: tokens.refreshTokenHash,
-      expiresAt: tokens.refreshTokenExpiresAt
+      playerId: loginResult.playerId,
+      now
     });
 
     response.json({
@@ -112,6 +98,7 @@ export const loginController: RequestHandler = async (request, response, next): 
 /** Creates a password reset token and returns the raw token for the delivery layer. */
 export const requestPasswordResetController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
+    const now = new Date();
     const { email } = request.body as {
       email: string;
     };
@@ -119,7 +106,7 @@ export const requestPasswordResetController: RequestHandler = async (request, re
     response.json({
       success: true,
       data: {
-        token: await requestPasswordReset(email)
+        token: await requestPasswordReset(email, now)
       }
     });
   } catch (error) {
@@ -130,6 +117,7 @@ export const requestPasswordResetController: RequestHandler = async (request, re
 /** Consumes a password reset token and updates the account password. */
 export const resetPasswordController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
+    const now = new Date();
     const { token, newPassword } = request.body as {
       token: string;
       newPassword: string;
@@ -137,7 +125,8 @@ export const resetPasswordController: RequestHandler = async (request, response,
 
     await resetPassword({
       token,
-      newPassword
+      newPassword,
+      now
     });
 
     response.json({
