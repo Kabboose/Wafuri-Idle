@@ -1,7 +1,7 @@
 import { createHash } from "crypto";
 
 import { findAccountById } from "../../db/accountRepo.js";
-import { findPlayerByAccountId } from "../../db/playerRepo.js";
+import { findPlayerIdentityByAccountId } from "../../db/identityRepo.js";
 import { deleteExpiredSessions, findByRefreshTokenHash } from "../../db/sessionRepo.js";
 
 export type RefreshSessionInput = {
@@ -36,7 +36,7 @@ export async function refreshSession(input: RefreshSessionInput): Promise<Refres
     throw new Error("Account not found");
   }
 
-  const player = await findPlayerByAccountId(account.id);
+  const player = await findPlayerIdentityByAccountId(account.id);
 
   if (!player) {
     throw new Error("Player not found");

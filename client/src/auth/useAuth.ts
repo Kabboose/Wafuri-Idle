@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import type { AuthState } from "./authState";
 import { createLoadingAuthState, hasEverAuthenticated, markAuthenticatedOnce } from "./authState";
 import { bootstrapAuth } from "./bootstrapAuth";
-import { publicApiPost } from "../api/client";
+import { apiPost, publicApiPost } from "../api/client";
 import { clearTokens, setTokens } from "./tokenStore";
 
 type AuthResponse = {
@@ -37,6 +37,16 @@ export type UseAuthResult = {
 export function useAuth(): UseAuthResult {
   const [authState, setAuthState] = useState<AuthState>(createLoadingAuthState());
 
+  /** Applies the shared post-auth success transition after guest, login, or upgrade flows. */
+  const applyAuthenticatedState = (authResponse: AuthResponse): void => {
+    setTokens(authResponse.accessToken, authResponse.refreshToken);
+    markAuthenticatedOnce();
+    setAuthState({
+      status: "authenticated",
+      accessToken: authResponse.accessToken
+    });
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -58,13 +68,7 @@ export function useAuth(): UseAuthResult {
   /** Creates an explicit guest session and transitions auth state to authenticated. */
   const createGuest = async (): Promise<void> => {
     const authResponse = await publicApiPost<AuthResponse>("/auth/guest");
-
-    setTokens(authResponse.accessToken, authResponse.refreshToken);
-    markAuthenticatedOnce();
-    setAuthState({
-      status: "authenticated",
-      accessToken: authResponse.accessToken
-    });
+    applyAuthenticatedState(authResponse);
   };
 
   /** Authenticates an existing account and transitions auth state to authenticated. */
@@ -73,29 +77,17 @@ export function useAuth(): UseAuthResult {
       username,
       password
     } satisfies LoginRequest);
-
-    setTokens(authResponse.accessToken, authResponse.refreshToken);
-    markAuthenticatedOnce();
-    setAuthState({
-      status: "authenticated",
-      accessToken: authResponse.accessToken
-    });
+    applyAuthenticatedState(authResponse);
   };
 
   /** Upgrades the current guest account and transitions auth state to authenticated. */
   const upgradeAccount = async (username: string, password: string, email: string): Promise<void> => {
-    const authResponse = await publicApiPost<AuthResponse>("/auth/upgrade", {
+    const authResponse = await apiPost<AuthResponse>("/auth/upgrade", {
       username,
       password,
       email
     } satisfies UpgradeAccountRequest);
-
-    setTokens(authResponse.accessToken, authResponse.refreshToken);
-    markAuthenticatedOnce();
-    setAuthState({
-      status: "authenticated",
-      accessToken: authResponse.accessToken
-    });
+    applyAuthenticatedState(authResponse);
   };
 
   /** Transitions auth state to the explicit login form. */

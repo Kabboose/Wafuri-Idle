@@ -6,7 +6,7 @@ import { issueAuthSession } from "../services/auth/issueAuthSession.js";
 import { login } from "../services/auth/login.js";
 import { requestPasswordReset } from "../services/auth/requestPasswordReset.js";
 import { resetPassword } from "../services/auth/resetPassword.js";
-import { upgradeCurrentAccount } from "../services/auth/upgradeCurrentAccount.js";
+import { upgradeAccount } from "../services/auth/upgradeAccount.js";
 
 /** Creates an anonymous player session and returns the auth token payload. */
 export const createGuestSessionController: RequestHandler = async (_request, response, next): Promise<void> => {
@@ -40,7 +40,7 @@ export const upgradeAccountController: RequestHandler = async (request, response
       password: string;
       email: string;
     };
-    const upgradeResult = await upgradeCurrentAccount({
+    const upgradeResult = await upgradeAccount({
       accountId,
       username,
       password,

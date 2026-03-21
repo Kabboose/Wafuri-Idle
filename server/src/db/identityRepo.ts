@@ -67,6 +67,15 @@ export type CreateGuestAccountIdentityResult = {
   player: PlayerRecord;
 };
 
+/** Finds a player identity record by its linked account id. */
+export async function findPlayerIdentityByAccountId(accountId: string): Promise<PlayerRecord | null> {
+  const player = await prisma.player.findUnique({
+    where: { accountId }
+  });
+
+  return player ? mapPlayerRecord(player) : null;
+}
+
 /**
  * Creates a guest account and linked player row atomically.
  * Expects the caller to provide all balance values and the authoritative timestamp.

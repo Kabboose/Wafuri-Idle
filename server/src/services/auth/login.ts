@@ -1,7 +1,7 @@
 import argon2 from "argon2";
 
 import { findAccountByUsername } from "../../db/accountRepo.js";
-import { findPlayerByAccountId } from "../../db/playerRepo.js";
+import { findPlayerIdentityByAccountId } from "../../db/identityRepo.js";
 
 export type LoginInput = {
   username: string;
@@ -35,7 +35,7 @@ export async function login(input: LoginInput): Promise<LoginResult> {
     throw new Error("Invalid credentials");
   }
 
-  const player = await findPlayerByAccountId(account.id);
+  const player = await findPlayerIdentityByAccountId(account.id);
 
   if (!player) {
     throw new Error("Player not found");

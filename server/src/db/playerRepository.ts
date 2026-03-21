@@ -4,11 +4,6 @@ import { prisma } from "./prisma.js";
 import { parseFixed, stringifyFixed } from "../utils/fixedPoint.js";
 import type { PlayerMutation, PlayerState } from "../utils/playerTypes.js";
 
-/** Persists a newly created player row using Prisma input data. */
-export async function createPlayer(data: Prisma.PlayerCreateInput): Promise<Player> {
-  return prisma.player.create({ data });
-}
-
 /** Converts the Prisma player record into the internal bigint-based domain shape. */
 function mapPlayerRecord(player: Player): PlayerState {
   return {
