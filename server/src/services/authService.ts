@@ -8,16 +8,19 @@ export type GuestAuthResponse = {
   playerId: string;
 };
 
+/** Signs a JWT for the provided player id using the configured auth secret and expiry. */
+export function issueAuthToken(playerId: string): string {
+  return jwt.sign({ playerId }, config.jwtSecret, {
+    expiresIn: config.jwtExpiresIn as SignOptions["expiresIn"]
+  });
+}
+
 /** Creates a new anonymous player and signs a JWT for subsequent authenticated requests. */
 export async function createGuestSession(): Promise<GuestAuthResponse> {
   const guestAccount = await createGuestAccount();
 
-  const token = jwt.sign({ playerId: guestAccount.playerId }, config.jwtSecret, {
-    expiresIn: config.jwtExpiresIn as SignOptions["expiresIn"]
-  });
-
   return {
-    token,
+    token: issueAuthToken(guestAccount.playerId),
     playerId: guestAccount.playerId
   };
 }

@@ -44,6 +44,15 @@ export async function createPlayer(input: CreatePlayerInput): Promise<PlayerReco
   return mapPlayerRecord(player);
 }
 
+/** Finds a player row by its primary key. */
+export async function findPlayerById(playerId: string): Promise<PlayerRecord | null> {
+  const player = await prisma.player.findUnique({
+    where: { id: playerId }
+  });
+
+  return player ? mapPlayerRecord(player) : null;
+}
+
 /** Finds a player row by its linked account id. */
 export async function findPlayerByAccountId(accountId: string): Promise<PlayerRecord | null> {
   const player = await prisma.player.findUnique({
