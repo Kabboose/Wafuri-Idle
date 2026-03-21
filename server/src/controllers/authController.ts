@@ -112,7 +112,8 @@ export const refreshSessionController: RequestHandler = async (request, response
     response.json({
       success: true,
       data: {
-        accessToken: result.accessToken
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken
       }
     });
   } catch (error) {

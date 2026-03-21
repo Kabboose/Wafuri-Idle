@@ -56,7 +56,8 @@ Rules:
 - Do not auto-create guest accounts during bootstrap or refresh fallback.
 - `POST /auth/upgrade` is an authenticated endpoint and must use the authenticated API client.
 - Guest-account upgrade must preserve the existing linked player and must not create a second player record.
-- Access-token refresh may issue a new access token, but must not rotate refresh tokens unless that work is explicitly planned.
+- Refresh-token use should rotate the refresh token, soft-revoke the old session, and prevent old token reuse.
+- Refresh-token replay should be treated as a security event, logged, and should revoke remaining sessions for the affected account when feasible.
 - Failed authenticated requests must return control to the auth state machine instead of leaving stale authenticated UI mounted.
 - `Account` represents identity and authentication.
 - `Player` represents game state only.
@@ -264,6 +265,7 @@ Do not log sensitive secrets or raw JWTs.
 - `App` should render from auth state only and should not duplicate bootstrap logic.
 - Authenticated screens must report auth failures back into the auth state machine.
 - Guest creation, login, refresh, and upgrade flows must go through shared auth helpers or hooks rather than ad hoc component fetch calls.
+- Refresh handlers must replace stored access and refresh tokens atomically and keep single-flight behavior for concurrent `401` recovery.
 
 ## Worker Compatibility
 

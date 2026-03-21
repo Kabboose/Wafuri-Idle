@@ -28,7 +28,7 @@ Game balance and feature toggles live in [server/src/config/index.ts](/home/alex
 - Guest accounts can be created explicitly from the entry screen
 - Registered accounts can log in with username/password
 - Guest accounts can be upgraded in place via the in-game `Save Progress` flow
-- Access tokens are refreshed through `POST /auth/refresh` using stored refresh tokens
+- Access and refresh tokens are rotated through `POST /auth/refresh` using stored refresh-token sessions
 - The frontend uses an auth state machine instead of auto-creating a guest on startup
 
 ## Run
@@ -93,6 +93,7 @@ The frontend proxies REST calls to the backend on `http://localhost:3001`.
 - `Login`: authenticates an existing registered account
 - `Save Progress`: available in-game for guest accounts to upgrade the current account in place
 - Startup/bootstrap: the client validates the stored access token, attempts one refresh if needed, and falls back to explicit auth selection or login instead of silently creating a guest
+- Runtime `401` handling: the client performs one single-flight refresh attempt, atomically stores the rotated token pair, retries once, and returns to the auth flow if refresh fails
 
 ## Just Commands
 
