@@ -5,6 +5,7 @@ import { logger } from "../utils/logger.js";
 /** Loads and returns the latest player state for the authenticated player. */
 export const getPlayerStateController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
+    const now = Date.now();
     const playerId = request.user?.playerId;
 
     if (!playerId) {
@@ -12,7 +13,7 @@ export const getPlayerStateController: RequestHandler = async (request, response
       return;
     }
 
-    const playerState = await getPlayerState(playerId);
+    const playerState = await getPlayerState(playerId, now);
 
     logger.info(
       {
@@ -35,6 +36,7 @@ export const getPlayerStateController: RequestHandler = async (request, response
 /** Applies idle progress plus an upgrade mutation for the authenticated player. */
 export const upgradePlayerController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
+    const now = Date.now();
     const playerId = request.user?.playerId;
 
     if (!playerId) {
@@ -42,7 +44,7 @@ export const upgradePlayerController: RequestHandler = async (request, response,
       return;
     }
 
-    const playerState = await upgradePlayer(playerId);
+    const playerState = await upgradePlayer(playerId, now);
 
     logger.info(
       {
@@ -65,6 +67,7 @@ export const upgradePlayerController: RequestHandler = async (request, response,
 /** Advances the authenticated player's state without applying any extra action. */
 export const tickPlayerController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
+    const now = Date.now();
     const playerId = request.user?.playerId;
 
     if (!playerId) {
@@ -72,7 +75,7 @@ export const tickPlayerController: RequestHandler = async (request, response, ne
       return;
     }
 
-    const playerState = await getPlayerState(playerId);
+    const playerState = await getPlayerState(playerId, now);
 
     logger.info(
       {

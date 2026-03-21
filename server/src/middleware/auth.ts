@@ -4,7 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 import { config } from "../config/index.js";
 import type { AuthTokenPayload } from "../utils/playerTypes.js";
 
-/** Validates the bearer token and attaches the authenticated player to the request context. */
+/** Validates the bearer token and attaches the authenticated account and player ids to the request context. */
 export async function requireAuth(request: Request, response: Response, next: NextFunction): Promise<void> {
   try {
     const authorizationHeader = request.header("Authorization");
@@ -17,12 +17,13 @@ export async function requireAuth(request: Request, response: Response, next: Ne
     const token = authorizationHeader.slice("Bearer ".length);
     const payload = jwt.verify(token, config.jwtSecret) as AuthTokenPayload;
 
-    if (!payload.playerId) {
+    if (!payload.accountId || !payload.playerId) {
       response.status(401).json({ success: false, error: "Invalid token payload" });
       return;
     }
 
     request.user = {
+      accountId: payload.accountId,
       playerId: payload.playerId
     };
 

@@ -27,6 +27,7 @@ export type PlayerMutation = {
 };
 
 export type AuthenticatedUser = {
+  accountId: string;
   playerId: string;
 };
 

@@ -43,10 +43,16 @@ Rules:
 ## Auth Rules
 
 - JWT auth is required for all player endpoints.
-- `requireAuth` must attach `req.user = { playerId: string }`.
+- `requireAuth` must attach `req.user = { accountId: string, playerId: string }`.
 - Controllers read `req.user`.
-- Services receive `playerId` as a plain argument.
+- Services receive only the plain ids they actually need.
 - Services must not know about Express or JWT internals.
+- `Account` represents identity and authentication.
+- `Player` represents game state only.
+- Email and username must be normalized before persistence.
+- Database uniqueness must rely on normalized values.
+- Account upgrade and password reset operations must be transactional.
+- Returning raw reset tokens is temporary for development only; production must deliver them via a secure email channel only.
 
 ## Trust Model
 
@@ -107,6 +113,12 @@ Per request:
 
 Capture `Date.now()` once per logical request mutation and pass it through.
 
+Determinism rule:
+
+- Given the same input state and `nowMs`, services must produce identical results.
+- Services must not call `Date.now()` internally for game logic.
+- All time-dependent logic must receive `nowMs` as an argument.
+
 ## Concurrency Rules
 
 Player state updates must be safe under concurrent requests.
@@ -150,6 +162,7 @@ Rules:
 - Use database transactions where multiple writes must succeed together.
 - Do not split dependent writes across separate operations.
 - Ensure player state updates are committed or rolled back as a unit.
+- This applies to identity/auth flows as well, especially account upgrade and password reset.
 
 ## Cache Rules
 
@@ -245,6 +258,24 @@ Rules:
 - Services must not depend on request lifecycle state.
 - Services should be callable from background workers or jobs.
 - Avoid assumptions about synchronous request-response flow.
+
+## Statelessness
+
+The backend is stateless for request handling across requests.
+
+Rules:
+
+- Do not keep authoritative player state in process memory as a source of truth.
+- Session persistence exists only for authentication lifecycle management.
+
+## Statelessness
+
+The backend is stateless for request handling.
+
+Rules:
+
+- Do not keep authoritative player state in process memory across requests.
+- Session persistence exists only for authentication lifecycle management.
 
 ## Migration Discipline
 

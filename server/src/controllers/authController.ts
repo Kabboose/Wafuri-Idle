@@ -26,9 +26,10 @@ export const createGuestSessionController: RequestHandler = async (_request, res
 export const upgradeAccountController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
     const now = new Date();
+    const accountId = request.user?.accountId;
     const playerId = request.user?.playerId;
 
-    if (!playerId) {
+    if (!accountId || !playerId) {
       next(new Error("Unauthorized"));
       return;
     }
@@ -39,7 +40,7 @@ export const upgradeAccountController: RequestHandler = async (request, response
       email: string;
     };
     const upgradeResult = await upgradeCurrentAccount({
-      playerId,
+      accountId,
       username,
       password,
       email

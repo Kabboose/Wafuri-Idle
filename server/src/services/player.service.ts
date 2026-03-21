@@ -17,9 +17,11 @@ function serializePlayer(player: PlayerState): SerializedPlayerState {
   };
 }
 
-/** Loads, progresses, persists, and returns the latest state for a player. */
-export async function getPlayerState(playerId: string): Promise<SerializedPlayerState> {
-  const now = Date.now();
+/**
+ * Loads, progresses, persists, and returns the latest state for a player.
+ * Accepts the request's captured time so progression stays deterministic for the request.
+ */
+export async function getPlayerState(playerId: string, now: number): Promise<SerializedPlayerState> {
   let cachedPlayer = await getCachedPlayerState(playerId);
 
   if (!cachedPlayer) {
@@ -38,9 +40,11 @@ export async function getPlayerState(playerId: string): Promise<SerializedPlayer
   return serialized;
 }
 
-/** Loads, progresses, upgrades, persists, and returns the latest state for a player. */
-export async function upgradePlayer(playerId: string): Promise<SerializedPlayerState> {
-  const now = Date.now();
+/**
+ * Loads, progresses, upgrades, persists, and returns the latest state for a player.
+ * Accepts the request's captured time so progression stays deterministic for the request.
+ */
+export async function upgradePlayer(playerId: string, now: number): Promise<SerializedPlayerState> {
   const cachedPlayer = await getCachedPlayerState(playerId);
   const player = await updatePlayerOptimistically(playerId, cachedPlayer, (currentPlayer) => {
     const progressedPlayer = progressPlayer(currentPlayer, now);

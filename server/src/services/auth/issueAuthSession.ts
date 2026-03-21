@@ -14,7 +14,7 @@ export type IssueAuthSessionResult = AuthTokens;
  * Accepts plain ids plus the request's captured time and returns the token bundle.
  */
 export async function issueAuthSession(input: IssueAuthSessionInput): Promise<IssueAuthSessionResult> {
-  const tokens = createAuthTokens(input.playerId, input.now);
+  const tokens = createAuthTokens(input.accountId, input.playerId, input.now);
 
   await createSession({
     accountId: input.accountId,
