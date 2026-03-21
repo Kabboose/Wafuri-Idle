@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 
-import { apiGet, apiPost } from "./api/client";
+import { apiGet, apiPost, AuthError } from "./api/client";
+import { bootstrapAuth } from "./auth/bootstrapAuth";
 import type { PlayerState } from "./auth/bootstrapAuth";
+import { loadPlayer } from "./game/loadPlayer";
 
 /** Formats fixed-point strings from the API into readable decimal values for display. */
 function formatFixed(value: string): string {
@@ -17,6 +19,12 @@ function formatFixed(value: string): string {
 
   const trimmedFraction = fraction.toString().padStart(6, "0").replace(/0+$/, "");
   return `${negative ? "-" : ""}${whole.toString()}.${trimmedFraction}`;
+}
+
+/** Re-establishes authentication and reloads the authoritative player state after auth loss. */
+async function rebootstrapPlayer(): Promise<PlayerState> {
+  await bootstrapAuth();
+  return loadPlayer();
 }
 
 /** Renders the minimal idle-game client and keeps the local view synced with the server. */
@@ -36,6 +44,23 @@ export default function App({ initialPlayerState }: { initialPlayerState: Player
           setError(null);
         }
       } catch (requestError) {
+        if (requestError instanceof AuthError) {
+          try {
+            const recoveredState = await rebootstrapPlayer();
+
+            if (!cancelled) {
+              setPlayerState(recoveredState);
+              setError(null);
+            }
+          } catch (recoveryError) {
+            if (!cancelled) {
+              setError(recoveryError instanceof Error ? recoveryError.message : "Unknown error");
+            }
+          }
+
+          return;
+        }
+
         if (!cancelled) {
           setError(requestError instanceof Error ? requestError.message : "Unknown error");
         }
@@ -54,6 +79,18 @@ export default function App({ initialPlayerState }: { initialPlayerState: Player
       setPlayerState(nextState);
       setError(null);
     } catch (requestError) {
+      if (requestError instanceof AuthError) {
+        try {
+          const recoveredState = await rebootstrapPlayer();
+          setPlayerState(recoveredState);
+          setError(null);
+          return;
+        } catch (recoveryError) {
+          setError(recoveryError instanceof Error ? recoveryError.message : "Unknown error");
+          return;
+        }
+      }
+
       setError(requestError instanceof Error ? requestError.message : "Unknown error");
     }
   };
