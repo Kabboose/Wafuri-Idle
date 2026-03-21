@@ -11,6 +11,11 @@ export function getRefreshToken(): string | null {
   return window.localStorage.getItem(REFRESH_TOKEN_KEY);
 }
 
+/** Persists only the access token while preserving the existing refresh token state. */
+export function setAccessToken(accessToken: string): void {
+  window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+}
+
 /** Persists the current auth token pair for later authenticated requests. */
 export function setTokens(accessToken: string, refreshToken: string): void {
   window.localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);

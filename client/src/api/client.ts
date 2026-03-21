@@ -54,6 +54,25 @@ async function apiRequest<T>(path: string, method: "GET" | "POST", body?: unknow
   return payload.data;
 }
 
+/** Performs an unauthenticated API request and unwraps the standard success envelope. */
+async function publicApiRequest<T>(path: string, method: "GET" | "POST", body?: unknown): Promise<T> {
+  const response = await fetch(path, {
+    method,
+    headers: {
+      "Content-Type": "application/json"
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {})
+  });
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`);
+  }
+
+  const payload = (await response.json()) as ApiSuccessResponse<T>;
+
+  return payload.data;
+}
+
 /** Performs an authenticated GET request. */
 export async function apiGet<T>(path: string): Promise<T> {
   return apiRequest<T>(path, "GET");
@@ -62,4 +81,9 @@ export async function apiGet<T>(path: string): Promise<T> {
 /** Performs an authenticated POST request with an optional JSON body. */
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return apiRequest<T>(path, "POST", body);
+}
+
+/** Performs an unauthenticated POST request with an optional JSON body. */
+export async function publicApiPost<T>(path: string, body?: unknown): Promise<T> {
+  return publicApiRequest<T>(path, "POST", body);
 }

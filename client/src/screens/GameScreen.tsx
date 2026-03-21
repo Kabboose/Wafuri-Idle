@@ -1,0 +1,136 @@
+import { useEffect, useState } from "react";
+
+import { apiPost, AuthError } from "../api/client";
+import type { PlayerState } from "../auth/bootstrapAuth";
+import { UpgradeModal } from "../components/UpgradeModal";
+import { loadPlayer } from "../game/loadPlayer";
+
+/** Formats fixed-point strings from the API into readable decimal values for display. */
+function formatFixed(value: string): string {
+  const bigintValue = BigInt(value);
+  const negative = bigintValue < 0n;
+  const absolute = negative ? -bigintValue : bigintValue;
+  const whole = absolute / 1000000n;
+  const fraction = absolute % 1000000n;
+
+  if (fraction === 0n) {
+    return `${negative ? "-" : ""}${whole.toString()}`;
+  }
+
+  const trimmedFraction = fraction.toString().padStart(6, "0").replace(/0+$/, "");
+  return `${negative ? "-" : ""}${whole.toString()}.${trimmedFraction}`;
+}
+
+/** Renders the authenticated game view and keeps the displayed player state synced with the server. */
+export function GameScreen({
+  onAuthFailure,
+  upgradeAccount
+}: {
+  onAuthFailure: () => void;
+  upgradeAccount: (username: string, password: string, email: string) => Promise<void>;
+}) {
+  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const [playerState, setPlayerState] = useState<PlayerState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadInitialState = async () => {
+      try {
+        const nextState = await loadPlayer();
+
+        if (!cancelled) {
+          setPlayerState(nextState);
+          setError(null);
+        }
+      } catch (requestError) {
+        if (requestError instanceof AuthError) {
+          if (!cancelled) {
+            onAuthFailure();
+          }
+
+          return;
+        }
+
+        if (!cancelled) {
+          setError(requestError instanceof Error ? requestError.message : "Unknown error");
+        }
+      }
+    };
+
+    void loadInitialState();
+
+    const intervalId = window.setInterval(async () => {
+      try {
+        const nextState = await loadPlayer();
+
+        if (!cancelled) {
+          setPlayerState(nextState);
+          setError(null);
+        }
+      } catch (requestError) {
+        if (requestError instanceof AuthError) {
+          if (!cancelled) {
+            onAuthFailure();
+          }
+
+          return;
+        }
+
+        if (!cancelled) {
+          setError(requestError instanceof Error ? requestError.message : "Unknown error");
+        }
+      }
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, []);
+
+  const handleUpgrade = async () => {
+    try {
+      const nextState = await apiPost<PlayerState>("/upgrade");
+      setPlayerState(nextState);
+      setError(null);
+    } catch (requestError) {
+      if (requestError instanceof AuthError) {
+        onAuthFailure();
+        return;
+      }
+
+      setError(requestError instanceof Error ? requestError.message : "Unknown error");
+    }
+  };
+
+  if (!playerState) {
+    return <main className="screen-shell">Loading...</main>;
+  }
+
+  return (
+    <main className="game-screen">
+      <h1>World Flipper-Inspired Idle Prototype</h1>
+      {error ? <p className="error-text">{error}</p> : null}
+      <p>Player ID: {playerState.id}</p>
+      <p>Mana: {formatFixed(playerState.mana)}</p>
+      <p>Mana generation rate: {formatFixed(playerState.manaGenerationRate)} / sec</p>
+      <p>Team power: {playerState.teamPower}</p>
+      <div className="button-row">
+        <button type="button" className="secondary-button" onClick={() => setIsUpgradeOpen(true)}>
+          Save Progress
+        </button>
+        <button type="button" onClick={() => void handleUpgrade()}>
+          Upgrade Team
+        </button>
+      </div>
+      {isUpgradeOpen ? (
+        <UpgradeModal
+          upgradeAccount={upgradeAccount}
+          onClose={() => setIsUpgradeOpen(false)}
+        />
+      ) : null}
+    </main>
+  );
+}
