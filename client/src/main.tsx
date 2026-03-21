@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 
 import App from "./App";
 import { bootstrapAuth } from "./auth/bootstrapAuth";
+import { loadPlayer } from "./game/loadPlayer";
 
 const root = ReactDOM.createRoot(document.getElementById("root")!);
 
@@ -29,11 +30,12 @@ async function startApp(): Promise<void> {
   renderLoading();
 
   try {
-    const authState = await bootstrapAuth();
+    await bootstrapAuth();
+    const playerState = await loadPlayer();
 
     root.render(
       <React.StrictMode>
-        <App initialPlayerState={authState.playerState} />
+        <App initialPlayerState={playerState} />
       </React.StrictMode>
     );
   } catch (error) {
