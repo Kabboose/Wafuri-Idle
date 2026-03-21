@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { apiGet, apiPost } from "./api/client";
 import { bootstrapAuth, type PlayerState } from "./auth/bootstrapAuth";
-import { getAccessToken } from "./auth/tokenStore";
-
-type ApiSuccessResponse<T> = {
-  success: true;
-  data: T;
-};
 
 /** Formats fixed-point strings from the API into readable decimal values for display. */
 function formatFixed(value: string): string {
@@ -24,29 +19,9 @@ function formatFixed(value: string): string {
   return `${negative ? "-" : ""}${whole.toString()}.${trimmedFraction}`;
 }
 
-/** Performs an API request and unwraps the standard success envelope. */
-async function requestJson<T>(path: "/auth/guest" | "/state" | "/upgrade", method: "GET" | "POST", token?: string): Promise<T> {
-  const response = await fetch(path, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
-  }
-
-  const payload = (await response.json()) as ApiSuccessResponse<T>;
-
-  return payload.data;
-}
-
 /** Renders the minimal idle-game client and keeps the local view synced with the server. */
 export default function App() {
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
-  const [authToken, setAuthToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,7 +33,6 @@ export default function App() {
         const authState = await bootstrapAuth();
 
         if (!cancelled) {
-          setAuthToken(authState.accessToken);
           setPlayerState(authState.playerState);
           setError(null);
           setLoading(false);
@@ -75,13 +49,7 @@ export default function App() {
 
     const intervalId = window.setInterval(async () => {
       try {
-        const token = getAccessToken();
-
-        if (!token) {
-          return;
-        }
-
-        const nextState = await requestJson<PlayerState>("/state", "GET", token);
+        const nextState = await apiGet<PlayerState>("/state");
 
         if (!cancelled) {
           setPlayerState(nextState);
@@ -102,11 +70,7 @@ export default function App() {
 
   const handleUpgrade = async () => {
     try {
-      if (!authToken) {
-        throw new Error("Missing auth token");
-      }
-
-      const nextState = await requestJson<PlayerState>("/upgrade", "POST", authToken);
+      const nextState = await apiPost<PlayerState>("/upgrade");
       setPlayerState(nextState);
       setError(null);
     } catch (requestError) {
