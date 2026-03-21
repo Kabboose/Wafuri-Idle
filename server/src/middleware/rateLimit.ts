@@ -5,6 +5,7 @@ const errorResponse = {
   error: "Too many requests"
 };
 
+/** Rate limit for upgrade requests, which mutate player progression. */
 export const upgradeRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 30,
@@ -13,6 +14,7 @@ export const upgradeRateLimiter = rateLimit({
   message: errorResponse
 });
 
+/** Rate limit for tick requests, which can be spammed by aggressive polling. */
 export const tickRateLimiter = rateLimit({
   windowMs: 60 * 1000,
   limit: 120,
@@ -20,4 +22,3 @@ export const tickRateLimiter = rateLimit({
   legacyHeaders: false,
   message: errorResponse
 });
-

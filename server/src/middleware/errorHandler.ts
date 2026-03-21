@@ -2,6 +2,7 @@ import type { ErrorRequestHandler } from "express";
 
 import { logger } from "../utils/logger.js";
 
+/** Logs unhandled request errors and returns the standard API error envelope. */
 export const errorHandler: ErrorRequestHandler = (error, request, response, _next) => {
   const message = error instanceof Error ? error.message : "Internal server error";
 
@@ -16,4 +17,3 @@ export const errorHandler: ErrorRequestHandler = (error, request, response, _nex
     error: message
   });
 };
-

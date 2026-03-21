@@ -4,6 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 import { config } from "../config/index.js";
 import type { AuthTokenPayload } from "../utils/playerTypes.js";
 
+/** Validates the bearer token and attaches the authenticated player to the request context. */
 export async function requireAuth(request: Request, response: Response, next: NextFunction): Promise<void> {
   try {
     const authorizationHeader = request.header("Authorization");

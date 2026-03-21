@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 import { getPlayerState, upgradePlayer } from "../services/player.service.js";
 import { logger } from "../utils/logger.js";
 
+/** Loads and returns the latest player state for the authenticated player. */
 export const getPlayerStateController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
     const playerId = request.user?.playerId;
@@ -31,6 +32,7 @@ export const getPlayerStateController: RequestHandler = async (request, response
   }
 };
 
+/** Applies idle progress plus an upgrade mutation for the authenticated player. */
 export const upgradePlayerController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
     const playerId = request.user?.playerId;
@@ -60,6 +62,7 @@ export const upgradePlayerController: RequestHandler = async (request, response,
   }
 };
 
+/** Advances the authenticated player's state without applying any extra action. */
 export const tickPlayerController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
     const playerId = request.user?.playerId;

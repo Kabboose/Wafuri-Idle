@@ -20,6 +20,7 @@ type ApiSuccessResponse<T> = {
 
 const AUTH_TOKEN_KEY = "wafuri-idle-token";
 
+/** Formats fixed-point strings from the API into readable decimal values for display. */
 function formatFixed(value: string): string {
   const bigintValue = BigInt(value);
   const negative = bigintValue < 0n;
@@ -35,6 +36,7 @@ function formatFixed(value: string): string {
   return `${negative ? "-" : ""}${whole.toString()}.${trimmedFraction}`;
 }
 
+/** Performs an API request and unwraps the standard success envelope. */
 async function requestJson<T>(path: "/auth/guest" | "/state" | "/upgrade", method: "GET" | "POST", token?: string): Promise<T> {
   const response = await fetch(path, {
     method,
@@ -53,6 +55,7 @@ async function requestJson<T>(path: "/auth/guest" | "/state" | "/upgrade", metho
   return payload.data;
 }
 
+/** Reuses an existing guest JWT or creates a new anonymous session on first load. */
 async function ensureGuestToken(): Promise<string> {
   const existingToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
 
@@ -66,6 +69,7 @@ async function ensureGuestToken(): Promise<string> {
   return authResponse.token;
 }
 
+/** Renders the minimal idle-game client and keeps the local view synced with the server. */
 export default function App() {
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);

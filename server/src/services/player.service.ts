@@ -4,6 +4,7 @@ import { progressPlayer, upgradePlayer as applyPlayerUpgrade } from "./idle.serv
 import { stringifyFixed } from "../utils/fixedPoint.js";
 import type { PlayerState, SerializedPlayerState } from "../utils/playerTypes.js";
 
+/** Converts the internal bigint-based state into the API response shape. */
 function serializePlayer(player: PlayerState): SerializedPlayerState {
   return {
     id: player.id,
@@ -16,6 +17,7 @@ function serializePlayer(player: PlayerState): SerializedPlayerState {
   };
 }
 
+/** Loads, progresses, persists, and returns the latest state for a player. */
 export async function getPlayerState(playerId: string): Promise<SerializedPlayerState> {
   const now = Date.now();
   let cachedPlayer = await getCachedPlayerState(playerId);
@@ -25,6 +27,7 @@ export async function getPlayerState(playerId: string): Promise<SerializedPlayer
     await setCachedPlayerState(playerId, cachedPlayer);
   }
 
+  // The repository handles optimistic retries if the cached snapshot is stale.
   const player = await updatePlayerOptimistically(playerId, cachedPlayer, (currentPlayer) =>
     progressPlayer(currentPlayer, now)
   );
@@ -35,6 +38,7 @@ export async function getPlayerState(playerId: string): Promise<SerializedPlayer
   return serialized;
 }
 
+/** Loads, progresses, upgrades, persists, and returns the latest state for a player. */
 export async function upgradePlayer(playerId: string): Promise<SerializedPlayerState> {
   const now = Date.now();
   const cachedPlayer = await getCachedPlayerState(playerId);

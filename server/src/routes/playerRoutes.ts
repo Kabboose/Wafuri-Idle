@@ -4,6 +4,7 @@ import { getPlayerStateController, tickPlayerController, upgradePlayerController
 import { requireAuth } from "../middleware/auth.js";
 import { tickRateLimiter, upgradeRateLimiter } from "../middleware/rateLimit.js";
 
+/** Player routes define authenticated state and progression endpoints only. */
 const playerRoutes = Router();
 
 playerRoutes.use(requireAuth);

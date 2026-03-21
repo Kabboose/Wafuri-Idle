@@ -19,6 +19,7 @@ app.use(cors());
 app.use(express.json());
 app.use(requestLogger);
 
+/** Health probe used to verify both database and cache connectivity. */
 app.get("/health", async (_request, response, next) => {
   try {
     await prisma.$queryRaw`SELECT 1`;

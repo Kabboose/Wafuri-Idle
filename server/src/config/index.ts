@@ -1,3 +1,4 @@
+/** Runtime configuration loaded from environment variables. */
 export const config = {
   port: Number(process.env.PORT ?? 3001),
   databaseUrl: process.env.DATABASE_URL ?? "",
@@ -6,6 +7,7 @@ export const config = {
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "30d"
 };
 
+/** Central game balance values used by services and utilities. */
 export const GAME_CONFIG = {
   upgrade: {
     baseCost: 10,
@@ -26,11 +28,13 @@ export const GAME_CONFIG = {
   }
 } as const;
 
+/** Feature switches for incomplete systems that should stay disabled by default. */
 export const FEATURES = {
   gachaEnabled: false,
   multiplayerEnabled: false
 } as const;
 
+/** Validates required runtime configuration before the server starts. */
 export function validateConfig(): void {
   if (!config.databaseUrl) {
     throw new Error("DATABASE_URL is required");

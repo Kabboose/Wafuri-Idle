@@ -8,6 +8,7 @@ export type GuestAuthResponse = {
   playerId: string;
 };
 
+/** Creates a new anonymous player and signs a JWT for subsequent authenticated requests. */
 export async function createGuestSession(): Promise<GuestAuthResponse> {
   const now = new Date();
   const player = await createPlayer({

@@ -4,10 +4,12 @@ import { prisma } from "./prisma.js";
 import { parseFixed, stringifyFixed } from "../utils/fixedPoint.js";
 import type { PlayerMutation, PlayerState } from "../utils/playerTypes.js";
 
+/** Persists a newly created player row using Prisma input data. */
 export async function createPlayer(data: Prisma.PlayerCreateInput): Promise<Player> {
   return prisma.player.create({ data });
 }
 
+/** Converts the Prisma player record into the internal bigint-based domain shape. */
 function mapPlayerRecord(player: Player): PlayerState {
   return {
     id: player.id,
@@ -21,6 +23,7 @@ function mapPlayerRecord(player: Player): PlayerState {
   };
 }
 
+/** Converts a domain mutation into the Prisma update payload for persistence. */
 function mapMutationToUpdate(mutation: PlayerMutation): Prisma.PlayerUpdateInput {
   return {
     mana: stringifyFixed(mutation.mana),
@@ -30,6 +33,7 @@ function mapMutationToUpdate(mutation: PlayerMutation): Prisma.PlayerUpdateInput
   };
 }
 
+/** Loads a player row directly from Postgres and throws when it does not exist. */
 async function findPlayerRecordById(playerId: string): Promise<Player> {
   const player = await prisma.player.findUnique({
     where: { id: playerId }
@@ -42,10 +46,15 @@ async function findPlayerRecordById(playerId: string): Promise<Player> {
   return player;
 }
 
+/** Returns the current source-of-truth player state from Postgres. */
 export async function getPlayerById(playerId: string): Promise<PlayerState> {
   return mapPlayerRecord(await findPlayerRecordById(playerId));
 }
 
+/**
+ * Applies an optimistic-lock update using the player's current version.
+ * Accepts cached state as an optional first attempt, then falls back to fresh DB state on conflict.
+ */
 export async function updatePlayerOptimistically(
   playerId: string,
   initialPlayerState: PlayerState | null,
@@ -60,6 +69,7 @@ export async function updatePlayerOptimistically(
     }
 
     const mutation = buildUpdate(currentState);
+    // The version check prevents stale cached state from blindly overwriting newer DB state.
     const updateResult = await prisma.player.updateMany({
       where: {
         id: playerId,

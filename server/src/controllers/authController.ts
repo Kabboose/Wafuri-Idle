@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 
 import { createGuestSession } from "../services/authService.js";
 
+/** Creates an anonymous player session and returns the auth token payload. */
 export const createGuestSessionController: RequestHandler = async (_request, response, next): Promise<void> => {
   try {
     response.json({
