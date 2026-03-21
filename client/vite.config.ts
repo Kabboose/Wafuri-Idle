@@ -8,6 +8,7 @@ export default defineConfig({
     proxy: {
       "/auth": "http://localhost:3001",
       "/state": "http://localhost:3001",
+      "/tick": "http://localhost:3001",
       "/upgrade": "http://localhost:3001"
     }
   }

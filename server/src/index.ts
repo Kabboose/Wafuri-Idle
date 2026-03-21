@@ -5,8 +5,11 @@ import express from "express";
 import { validateConfig, config } from "./config/index.js";
 import { prisma } from "./db/prisma.js";
 import { redis } from "./db/redis.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import { requestLogger } from "./middleware/requestLogger.js";
 import { authRoutes } from "./routes/authRoutes.js";
 import { playerRoutes } from "./routes/playerRoutes.js";
+import { logger } from "./utils/logger.js";
 
 validateConfig();
 
@@ -14,6 +17,7 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+app.use(requestLogger);
 
 app.get("/health", async (_request, response, next) => {
   try {
@@ -28,11 +32,8 @@ app.get("/health", async (_request, response, next) => {
 app.use("/auth", authRoutes);
 app.use(playerRoutes);
 
-app.use((error: unknown, _request: express.Request, response: express.Response, _next: express.NextFunction) => {
-  const message = error instanceof Error ? error.message : "Internal server error";
-  response.status(500).json({ error: message });
-});
+app.use(errorHandler);
 
 app.listen(config.port, () => {
-  console.log(`Server listening on http://localhost:${config.port}`);
+  logger.info({ port: config.port }, "server listening");
 });

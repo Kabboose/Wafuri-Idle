@@ -9,7 +9,7 @@ export async function requireAuth(request: Request, response: Response, next: Ne
     const authorizationHeader = request.header("Authorization");
 
     if (!authorizationHeader?.startsWith("Bearer ")) {
-      response.status(401).json({ error: "Missing bearer token" });
+      response.status(401).json({ success: false, error: "Missing bearer token" });
       return;
     }
 
@@ -17,7 +17,7 @@ export async function requireAuth(request: Request, response: Response, next: Ne
     const payload = jwt.verify(token, config.jwtSecret) as AuthTokenPayload;
 
     if (!payload.playerId) {
-      response.status(401).json({ error: "Invalid token payload" });
+      response.status(401).json({ success: false, error: "Invalid token payload" });
       return;
     }
 
@@ -28,7 +28,7 @@ export async function requireAuth(request: Request, response: Response, next: Ne
     next();
   } catch (error) {
     if (error instanceof jwt.JsonWebTokenError) {
-      response.status(401).json({ error: "Invalid bearer token" });
+      response.status(401).json({ success: false, error: "Invalid bearer token" });
       return;
     }
 
