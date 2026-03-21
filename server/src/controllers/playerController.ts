@@ -4,10 +4,28 @@ import { logger } from "../utils/logger.js";
 
 export const getPlayerStateController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
-    const playerState = await getPlayerState(request.user!.playerId);
+    const playerId = request.user?.playerId;
 
-    logger.info({ playerId: request.user!.playerId }, "state fetched");
-    response.json(playerState);
+    if (!playerId) {
+      next(new Error("Unauthorized"));
+      return;
+    }
+
+    const playerState = await getPlayerState(playerId);
+
+    logger.info(
+      {
+        playerId,
+        mana: playerState.mana,
+        manaGenerationRate: playerState.manaGenerationRate,
+        teamPower: playerState.teamPower
+      },
+      "state fetched"
+    );
+    response.json({
+      success: true,
+      data: playerState
+    });
   } catch (error) {
     next(error);
   }
@@ -15,10 +33,28 @@ export const getPlayerStateController: RequestHandler = async (request, response
 
 export const upgradePlayerController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
-    const playerState = await upgradePlayer(request.user!.playerId);
+    const playerId = request.user?.playerId;
 
-    logger.info({ playerId: request.user!.playerId }, "player upgraded");
-    response.json(playerState);
+    if (!playerId) {
+      next(new Error("Unauthorized"));
+      return;
+    }
+
+    const playerState = await upgradePlayer(playerId);
+
+    logger.info(
+      {
+        playerId,
+        mana: playerState.mana,
+        manaGenerationRate: playerState.manaGenerationRate,
+        teamPower: playerState.teamPower
+      },
+      "player upgraded"
+    );
+    response.json({
+      success: true,
+      data: playerState
+    });
   } catch (error) {
     next(error);
   }
@@ -26,10 +62,28 @@ export const upgradePlayerController: RequestHandler = async (request, response,
 
 export const tickPlayerController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
-    const playerState = await getPlayerState(request.user!.playerId);
+    const playerId = request.user?.playerId;
 
-    logger.info({ playerId: request.user!.playerId }, "tick processed");
-    response.json(playerState);
+    if (!playerId) {
+      next(new Error("Unauthorized"));
+      return;
+    }
+
+    const playerState = await getPlayerState(playerId);
+
+    logger.info(
+      {
+        playerId,
+        mana: playerState.mana,
+        manaGenerationRate: playerState.manaGenerationRate,
+        teamPower: playerState.teamPower
+      },
+      "tick processed"
+    );
+    response.json({
+      success: true,
+      data: playerState
+    });
   } catch (error) {
     next(error);
   }

@@ -13,6 +13,11 @@ type AuthResponse = {
   playerId: string;
 };
 
+type ApiSuccessResponse<T> = {
+  success: true;
+  data: T;
+};
+
 const AUTH_TOKEN_KEY = "wafuri-idle-token";
 
 function formatFixed(value: string): string {
@@ -43,7 +48,9 @@ async function requestJson<T>(path: "/auth/guest" | "/state" | "/upgrade", metho
     throw new Error(`Request failed: ${response.status}`);
   }
 
-  return response.json() as Promise<T>;
+  const payload = (await response.json()) as ApiSuccessResponse<T>;
+
+  return payload.data;
 }
 
 async function ensureGuestToken(): Promise<string> {
