@@ -1,26 +1,11 @@
 import { useEffect, useState } from "react";
 
-type PlayerState = {
-  id: string;
-  mana: string;
-  manaGenerationRate: string;
-  teamPower: number;
-  lastUpdateTimestampMs: number;
-};
-
-type AuthResponse = {
-  accountId: string;
-  playerId: string;
-  accessToken: string;
-  refreshToken: string;
-};
+import { ACCESS_TOKEN_KEY, bootstrapAuth, type PlayerState } from "./auth/bootstrapAuth";
 
 type ApiSuccessResponse<T> = {
   success: true;
   data: T;
 };
-
-const AUTH_TOKEN_KEY = "wafuri-idle-token";
 
 /** Formats fixed-point strings from the API into readable decimal values for display. */
 function formatFixed(value: string): string {
@@ -57,20 +42,6 @@ async function requestJson<T>(path: "/auth/guest" | "/state" | "/upgrade", metho
   return payload.data;
 }
 
-/** Reuses an existing guest JWT or creates a new anonymous session on first load. */
-async function ensureGuestToken(): Promise<string> {
-  const existingToken = window.localStorage.getItem(AUTH_TOKEN_KEY);
-
-  if (existingToken) {
-    return existingToken;
-  }
-
-  const authResponse = await requestJson<AuthResponse>("/auth/guest", "POST");
-  window.localStorage.setItem(AUTH_TOKEN_KEY, authResponse.accessToken);
-
-  return authResponse.accessToken;
-}
-
 /** Renders the minimal idle-game client and keeps the local view synced with the server. */
 export default function App() {
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
@@ -83,12 +54,11 @@ export default function App() {
 
     const loadState = async () => {
       try {
-        const token = await ensureGuestToken();
-        const nextState = await requestJson<PlayerState>("/state", "GET", token);
+        const authState = await bootstrapAuth();
 
         if (!cancelled) {
-          setAuthToken(token);
-          setPlayerState(nextState);
+          setAuthToken(authState.accessToken);
+          setPlayerState(authState.playerState);
           setError(null);
           setLoading(false);
         }
@@ -104,7 +74,7 @@ export default function App() {
 
     const intervalId = window.setInterval(async () => {
       try {
-        const token = window.localStorage.getItem(AUTH_TOKEN_KEY);
+        const token = window.localStorage.getItem(ACCESS_TOKEN_KEY);
 
         if (!token) {
           return;
