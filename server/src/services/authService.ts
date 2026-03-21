@@ -14,7 +14,7 @@ export async function createGuestSession(): Promise<GuestAuthResponse> {
     mana: GAME_CONFIG.player.startingMana,
     manaGenerationRate: GAME_CONFIG.idle.baseRate,
     teamPower: GAME_CONFIG.player.startingTeamPower,
-    lastUpdateTimestamp: now
+    lastUpdateTimestampMs: now
   });
 
   const token = jwt.sign({ playerId: player.id }, config.jwtSecret, {

@@ -17,7 +17,8 @@ export const GAME_CONFIG = {
     baseRate: "1000000",
     teamPowerBonusBps: 200,
     fixedScale: "1000000",
-    multiplierScale: "10000"
+    multiplierScale: "10000",
+    maxOfflineProgressMs: 1000 * 60 * 60 * 24
   },
   player: {
     startingMana: "0",

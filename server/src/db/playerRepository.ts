@@ -15,7 +15,7 @@ function mapPlayerRecord(player: Player): PlayerState {
     manaGenerationRate: parseFixed(player.manaGenerationRate),
     teamPower: player.teamPower,
     version: player.version,
-    lastUpdateTimestamp: player.lastUpdateTimestamp.getTime(),
+    lastUpdateTimestampMs: player.lastUpdateTimestampMs.getTime(),
     createdAt: player.createdAt.getTime(),
     updatedAt: player.updatedAt.getTime()
   };
@@ -26,7 +26,7 @@ function mapMutationToUpdate(mutation: PlayerMutation): Prisma.PlayerUpdateInput
     mana: stringifyFixed(mutation.mana),
     manaGenerationRate: stringifyFixed(mutation.manaGenerationRate),
     teamPower: mutation.teamPower,
-    lastUpdateTimestamp: new Date(mutation.lastUpdateTimestamp)
+    lastUpdateTimestampMs: new Date(mutation.lastUpdateTimestampMs)
   };
 }
 

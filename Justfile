@@ -49,7 +49,7 @@ prisma-generate:
   {{nvm}} && npm run prisma:generate
 
 prisma-migrate:
-  {{nvm}} && npm run prisma:migrate
+  {{nvm}} && npm run prisma:migrate -- --name auto
 
 build:
   {{nvm}} && npm run build

@@ -23,7 +23,7 @@ Game balance and feature toggles live in [server/src/config/index.ts](/home/alex
 
 - Player state persists in PostgreSQL instead of process memory
 - Redis stores player cache entries and guest session tokens
-- Every authenticated request recalculates idle mana from `lastUpdateTimestamp`
+- Every authenticated request recalculates idle mana from `lastUpdateTimestampMs`
 - Upgrades increase both `teamPower` and `manaGenerationRate`
 - The frontend automatically creates and reuses a guest player via a bearer token in local storage
 
@@ -61,7 +61,7 @@ npm run prisma:generate --workspace server
 5. Run the initial database migration:
 
 ```bash
-npm run prisma:migrate --workspace server
+npm run prisma:migrate --workspace server -- --name auto
 ```
 
 6. Start the server:
@@ -99,8 +99,8 @@ Available recipes:
 - `infra-down`: stop the local PostgreSQL and Redis containers
 - `install`: install project dependencies
 - `prisma-generate`: generate the Prisma client
-- `prisma-migrate`: run the local Prisma migration
-- `setup`: create env file, start infra, wait for readiness, install dependencies, generate Prisma client, and run migrations
+- `prisma-migrate`: run the local Prisma migration with an automatic dev migration name
+- `setup`: create env file, start infra, wait for readiness, install dependencies, generate Prisma client, and run migrations automatically
 - `build`: build both server and client
 - `server`: run the backend dev server
 - `client`: run the frontend dev server

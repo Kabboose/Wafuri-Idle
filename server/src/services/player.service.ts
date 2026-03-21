@@ -1,6 +1,6 @@
 import { getPlayerById, updatePlayerOptimistically } from "../db/playerRepository.js";
 import { getCachedPlayerState, invalidateCachedPlayerState, setCachedPlayerState } from "./cacheService.js";
-import { applyUpgrade, calculateIdleProgress } from "./idle.service.js";
+import { progressPlayer, upgradePlayer as applyPlayerUpgrade } from "./idle.service.js";
 import { stringifyFixed } from "../utils/fixedPoint.js";
 import type { PlayerState, SerializedPlayerState } from "../utils/playerTypes.js";
 
@@ -10,7 +10,7 @@ function serializePlayer(player: PlayerState): SerializedPlayerState {
     mana: stringifyFixed(player.mana),
     manaGenerationRate: stringifyFixed(player.manaGenerationRate),
     teamPower: player.teamPower,
-    lastUpdateTimestamp: player.lastUpdateTimestamp,
+    lastUpdateTimestampMs: player.lastUpdateTimestampMs,
     createdAt: new Date(player.createdAt).toISOString(),
     updatedAt: new Date(player.updatedAt).toISOString()
   };
@@ -25,7 +25,7 @@ export async function getPlayerState(playerId: string): Promise<SerializedPlayer
   }
 
   const player = await updatePlayerOptimistically(playerId, cachedPlayer, (currentPlayer) =>
-    calculateIdleProgress(currentPlayer, Date.now())
+    progressPlayer(currentPlayer, Date.now())
   );
   const serialized = serializePlayer(player);
 
@@ -36,7 +36,11 @@ export async function getPlayerState(playerId: string): Promise<SerializedPlayer
 
 export async function upgradePlayer(playerId: string): Promise<SerializedPlayerState> {
   const cachedPlayer = await getCachedPlayerState(playerId);
-  const player = await updatePlayerOptimistically(playerId, cachedPlayer, (currentPlayer) => applyUpgrade(currentPlayer, Date.now()));
+  const player = await updatePlayerOptimistically(playerId, cachedPlayer, (currentPlayer) => {
+    const progressedPlayer = progressPlayer(currentPlayer, Date.now());
+
+    return applyPlayerUpgrade(progressedPlayer);
+  });
   const serialized = serializePlayer(player);
 
   await invalidateCachedPlayerState(playerId);

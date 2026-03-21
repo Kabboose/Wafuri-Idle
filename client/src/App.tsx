@@ -5,7 +5,7 @@ type PlayerState = {
   mana: string;
   manaGenerationRate: string;
   teamPower: number;
-  lastUpdateTimestamp: number;
+  lastUpdateTimestampMs: number;
 };
 
 type AuthResponse = {

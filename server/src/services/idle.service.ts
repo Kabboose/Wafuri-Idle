@@ -6,23 +6,24 @@ export function getEffectiveManaRate(player: Pick<PlayerState, "manaGenerationRa
   return getEffectiveRate(player.manaGenerationRate, player.teamPower);
 }
 
-export function calculateIdleProgress(player: PlayerState, now: number): PlayerMutation {
-  const elapsed = Math.max(now - player.lastUpdateTimestamp, 0);
+export function progressPlayer(player: PlayerState, now: number): PlayerMutation {
+  const elapsedMs = Math.min(
+    Math.max(now - player.lastUpdateTimestampMs, 0),
+    GAME_CONFIG.idle.maxOfflineProgressMs
+  );
 
   return {
-    mana: player.mana + calculateManaGain(elapsed, player.manaGenerationRate, player.teamPower),
+    mana: player.mana + calculateManaGain(elapsedMs, player.manaGenerationRate, player.teamPower),
     manaGenerationRate: player.manaGenerationRate,
     teamPower: player.teamPower,
-    lastUpdateTimestamp: now
+    lastUpdateTimestampMs: now
   };
 }
 
-export function applyUpgrade(player: PlayerState, now: number): PlayerMutation {
-  const progressed = calculateIdleProgress(player, now);
-
+export function upgradePlayer(player: PlayerMutation): PlayerMutation {
   return {
-    ...progressed,
-    manaGenerationRate: progressed.manaGenerationRate + RATE_UPGRADE_INCREMENT,
-    teamPower: progressed.teamPower + GAME_CONFIG.upgrade.teamPowerGain
+    ...player,
+    manaGenerationRate: player.manaGenerationRate + RATE_UPGRADE_INCREMENT,
+    teamPower: player.teamPower + GAME_CONFIG.upgrade.teamPowerGain
   };
 }
