@@ -180,3 +180,210 @@ Development Guidance:
 - Prefer explicit, composable functions over hidden coupling.
 - Treat retries, stale cache data, and concurrent requests as normal conditions.
 - Keep changes small, safe, and compatible with future workers and multiplayer systems.
+
+# ⚠️ Failure Scenarios and Expected Behavior
+
+The system must behave correctly under retries, race conditions, and partial failures.  
+These scenarios are considered normal operating conditions.
+
+---
+
+## 🔁 1. Duplicate Request (Network Retry)
+
+**Scenario:**
+- Client sends `/upgrade`
+- Network times out
+- Client retries the same request
+
+**Expected Behavior:**
+- Account is upgraded exactly once
+- No duplicate accounts created
+- No conflicting username/email writes
+- Second request either:
+  - succeeds safely (no-op), or
+  - returns a controlled error (e.g. "already upgraded")
+
+**Key Safeguards:**
+- Unique constraints on username/email
+- Idempotent service logic
+
+---
+
+## ⚔️ 2. Concurrent Upgrade Requests
+
+**Scenario:**
+- Two `/auth/upgrade` requests hit simultaneously
+
+**Expected Behavior:**
+- Only one succeeds
+- The other:
+  - fails cleanly OR
+  - resolves safely without corrupting state
+
+**Key Safeguards:**
+- DB uniqueness constraints
+- Transactional update
+- No partial writes
+
+---
+
+## 🔐 3. Password Reset Token Reuse
+
+**Scenario:**
+- Same reset token used twice
+
+**Expected Behavior:**
+- First request succeeds
+- Second request fails (token already used)
+
+**Key Safeguards:**
+- `usedAt` field
+- Atomic update (mark used + change password)
+
+---
+
+## ⏳ 4. Expired Reset Token
+
+**Scenario:**
+- Token used after expiry
+
+**Expected Behavior:**
+- Request is rejected
+- No password change occurs
+
+**Key Safeguards:**
+- Expiry check in repo/service
+- Server time (`nowMs`) only
+
+---
+
+## 🧪 5. Invalid Reset Token
+
+**Scenario:**
+- Token does not exist or hash mismatch
+
+**Expected Behavior:**
+- Request fails safely
+- No information leakage (do not reveal which part failed)
+
+---
+
+## 🔑 6. Concurrent Login Attempts
+
+**Scenario:**
+- Multiple login attempts with same credentials
+
+**Expected Behavior:**
+- All valid attempts succeed independently
+- No corruption of session state
+
+**Key Safeguards:**
+- Stateless login service
+- Independent session creation
+
+---
+
+## 🧨 7. Refresh Token Theft (Future Handling)
+
+**Scenario:**
+- Stolen refresh token is reused
+
+**Expected Behavior (current phase):**
+- Token works until expiry
+
+**Future Expectation:**
+- Token rotation
+- Session invalidation on reuse detection
+
+---
+
+## 🧱 8. Partial Failure During Upgrade
+
+**Scenario:**
+- Account updated but process crashes before completion
+
+**Expected Behavior:**
+- System remains consistent
+- No “half-upgraded” invalid state
+
+**Key Safeguards:**
+- DB transaction wrapping upgrade
+
+---
+
+## 🔄 9. Optimistic Lock Conflict (Gameplay)
+
+**Scenario:**
+- Two `/tick` or `/upgrade` calls overlap
+
+**Expected Behavior:**
+- One succeeds
+- One retries once with fresh state
+- If still failing → controlled error
+
+**Key Safeguards:**
+- `version` field
+- retry logic in repository
+
+---
+
+## 🧊 10. Stale Cache Read
+
+**Scenario:**
+- Redis returns outdated player state
+
+**Expected Behavior:**
+- DB write still succeeds correctly
+- No incorrect overwrite
+
+**Key Safeguards:**
+- DB as source of truth
+- version check on write
+
+---
+
+## 🧠 11. Time Drift / Manipulation Attempt
+
+**Scenario:**
+- Client attempts to spoof timestamps
+
+**Expected Behavior:**
+- No effect on progression
+
+**Key Safeguards:**
+- Server-only time (`nowMs`)
+- Client never sends authoritative time
+
+---
+
+## 🚫 12. Guest Account Loss
+
+**Scenario:**
+- User loses JWT (no upgrade/email)
+
+**Expected Behavior:**
+- Account is unrecoverable
+
+**Design Decision:**
+- Accepted tradeoff for guest flow simplicity
+
+---
+
+# 🧭 Guiding Principle
+
+When failures occur:
+
+- Do not corrupt state  
+- Do not double-apply mutations  
+- Do not trust the client  
+- Fail explicitly and safely  
+
+---
+
+# ✅ Why This Matters
+
+This ensures:
+- safe retries
+- safe scaling (workers later)
+- predictable debugging
+- no “ghost bugs” in progression
