@@ -19,6 +19,15 @@ export type CreateAccountInput = {
   passwordHash?: string | null;
 };
 
+export type UpdateAccountInput = {
+  type?: "GUEST" | "REGISTERED";
+  username?: string | null;
+  usernameNormalized?: string | null;
+  email?: string | null;
+  emailNormalized?: string | null;
+  passwordHash?: string | null;
+};
+
 export type PlayerRecord = {
   id: string;
   accountId: string;
@@ -71,4 +80,3 @@ export type StorePasswordResetTokenInput = {
   tokenHash: string;
   expiresAt: Date;
 };
-

@@ -1,5 +1,5 @@
 import { prisma } from "./prisma.js";
-import type { AccountRecord, CreateAccountInput } from "../utils/identityTypes.js";
+import type { AccountRecord, CreateAccountInput, UpdateAccountInput } from "../utils/identityTypes.js";
 
 function mapAccountRecord(account: {
   id: string;
@@ -44,6 +44,15 @@ export async function createAccount(input: CreateAccountInput): Promise<AccountR
   return mapAccountRecord(account);
 }
 
+/** Finds an account by its primary key. */
+export async function findAccountById(accountId: string): Promise<AccountRecord | null> {
+  const account = await prisma.account.findUnique({
+    where: { id: accountId }
+  });
+
+  return account ? mapAccountRecord(account) : null;
+}
+
 /**
  * Finds an account by normalized username.
  * Expects a pre-normalized username string.
@@ -66,5 +75,25 @@ export async function findAccountByEmail(emailNormalized: string): Promise<Accou
   });
 
   return account ? mapAccountRecord(account) : null;
+}
+
+/**
+ * Updates an account row.
+ * Expects all normalization and validation decisions to already be handled by the caller.
+ */
+export async function updateAccount(accountId: string, input: UpdateAccountInput): Promise<AccountRecord> {
+  const account = await prisma.account.update({
+    where: { id: accountId },
+    data: {
+      type: input.type,
+      username: input.username,
+      usernameNormalized: input.usernameNormalized,
+      email: input.email,
+      emailNormalized: input.emailNormalized,
+      passwordHash: input.passwordHash
+    }
+  });
+
+  return mapAccountRecord(account);
 }
 
