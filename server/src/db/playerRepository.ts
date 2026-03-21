@@ -29,7 +29,7 @@ function mapMutationToUpdate(mutation: PlayerMutation): Prisma.PlayerUpdateInput
   };
 }
 
-async function findPlayerById(playerId: string): Promise<Player> {
+async function findPlayerRecordById(playerId: string): Promise<Player> {
   const player = await prisma.player.findUnique({
     where: { id: playerId }
   });
@@ -41,15 +41,23 @@ async function findPlayerById(playerId: string): Promise<Player> {
   return player;
 }
 
-export async function updatePlayerWithLock(
+export async function getPlayerById(playerId: string): Promise<PlayerState> {
+  return mapPlayerRecord(await findPlayerRecordById(playerId));
+}
+
+export async function updatePlayerOptimistically(
   playerId: string,
+  initialPlayerState: PlayerState | null,
   buildUpdate: (player: PlayerState) => PlayerMutation
 ): Promise<PlayerState> {
   let attempts = 0;
+  let currentState = initialPlayerState;
 
   while (attempts < 2) {
-    const player = await findPlayerById(playerId);
-    const currentState = mapPlayerRecord(player);
+    if (!currentState) {
+      currentState = await getPlayerById(playerId);
+    }
+
     const mutation = buildUpdate(currentState);
     const updateResult = await prisma.player.updateMany({
       where: {
@@ -74,6 +82,7 @@ export async function updatePlayerWithLock(
     }
 
     attempts += 1;
+    currentState = null;
   }
 
   throw new Error("Concurrent player update conflict");
