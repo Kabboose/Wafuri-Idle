@@ -1,3 +1,5 @@
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "./tokenStore";
+
 export type PlayerState = {
   id: string;
   mana: string;
@@ -17,15 +19,6 @@ type ApiSuccessResponse<T> = {
   success: true;
   data: T;
 };
-
-export const ACCESS_TOKEN_KEY = "wafuri-idle-access-token";
-export const REFRESH_TOKEN_KEY = "wafuri-idle-refresh-token";
-
-/** Removes any persisted auth tokens so the client can safely recover from auth failure. */
-export function clearStoredTokens(): void {
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.localStorage.removeItem(REFRESH_TOKEN_KEY);
-}
 
 /** Performs a guest-auth request and unwraps the standard success envelope. */
 async function createGuestSession(): Promise<AuthResponse> {
@@ -84,8 +77,8 @@ export type BootstrapAuthResult = {
 
 /** Ensures the client has a valid authenticated session and returns the authenticated player state. */
 export async function bootstrapAuth(): Promise<BootstrapAuthResult> {
-  const existingAccessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
-  const existingRefreshToken = window.localStorage.getItem(REFRESH_TOKEN_KEY);
+  const existingAccessToken = getAccessToken();
+  const existingRefreshToken = getRefreshToken();
 
   if (existingAccessToken) {
     const existingState = await fetchPlayerState(existingAccessToken);
@@ -98,13 +91,12 @@ export async function bootstrapAuth(): Promise<BootstrapAuthResult> {
       };
     }
 
-    clearStoredTokens();
+    clearTokens();
   }
 
   const guestSession = await createGuestSession();
 
-  window.localStorage.setItem(ACCESS_TOKEN_KEY, guestSession.accessToken);
-  window.localStorage.setItem(REFRESH_TOKEN_KEY, guestSession.refreshToken);
+  setTokens(guestSession.accessToken, guestSession.refreshToken);
 
   try {
     const guestState = await fetchPlayerState(guestSession.accessToken);
@@ -119,7 +111,7 @@ export async function bootstrapAuth(): Promise<BootstrapAuthResult> {
       playerState: guestState.playerState
     };
   } catch (error) {
-    clearStoredTokens();
+    clearTokens();
     throw error;
   }
 }

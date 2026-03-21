@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
-import { ACCESS_TOKEN_KEY, bootstrapAuth, type PlayerState } from "./auth/bootstrapAuth";
+import { bootstrapAuth, type PlayerState } from "./auth/bootstrapAuth";
+import { getAccessToken } from "./auth/tokenStore";
 
 type ApiSuccessResponse<T> = {
   success: true;
@@ -74,7 +75,7 @@ export default function App() {
 
     const intervalId = window.setInterval(async () => {
       try {
-        const token = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+        const token = getAccessToken();
 
         if (!token) {
           return;
