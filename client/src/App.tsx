@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { apiGet, apiPost } from "./api/client";
-import { bootstrapAuth, type PlayerState } from "./auth/bootstrapAuth";
+import type { PlayerState } from "./auth/bootstrapAuth";
 
 /** Formats fixed-point strings from the API into readable decimal values for display. */
 function formatFixed(value: string): string {
@@ -20,32 +20,12 @@ function formatFixed(value: string): string {
 }
 
 /** Renders the minimal idle-game client and keeps the local view synced with the server. */
-export default function App() {
-  const [playerState, setPlayerState] = useState<PlayerState | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function App({ initialPlayerState }: { initialPlayerState: PlayerState }) {
+  const [playerState, setPlayerState] = useState<PlayerState>(initialPlayerState);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-
-    const loadState = async () => {
-      try {
-        const authState = await bootstrapAuth();
-
-        if (!cancelled) {
-          setPlayerState(authState.playerState);
-          setError(null);
-          setLoading(false);
-        }
-      } catch (requestError) {
-        if (!cancelled) {
-          setError(requestError instanceof Error ? requestError.message : "Unknown error");
-          setLoading(false);
-        }
-      }
-    };
-
-    void loadState();
 
     const intervalId = window.setInterval(async () => {
       try {
@@ -78,18 +58,14 @@ export default function App() {
     }
   };
 
-  if (loading) {
-    return <main>Loading...</main>;
-  }
-
   return (
     <main>
       <h1>World Flipper-Inspired Idle Prototype</h1>
       {error ? <p>{error}</p> : null}
-      <p>Player ID: {playerState?.id ?? "Unknown"}</p>
-      <p>Mana: {playerState ? formatFixed(playerState.mana) : "0"}</p>
-      <p>Mana generation rate: {playerState ? formatFixed(playerState.manaGenerationRate) : "0"} / sec</p>
-      <p>Team power: {playerState ? playerState.teamPower : 0}</p>
+      <p>Player ID: {playerState.id}</p>
+      <p>Mana: {formatFixed(playerState.mana)}</p>
+      <p>Mana generation rate: {formatFixed(playerState.manaGenerationRate)} / sec</p>
+      <p>Team power: {playerState.teamPower}</p>
       <button type="button" onClick={() => void handleUpgrade()}>
         Upgrade Team
       </button>
