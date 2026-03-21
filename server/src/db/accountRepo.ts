@@ -139,25 +139,46 @@ export async function upgradeAccountToRegistered(
   input: UpgradeRegisteredAccountInput
 ): Promise<AccountRecord> {
   try {
-    const account = await prisma.account.update({
-      where: { id: accountId },
-      data: {
-        type: "REGISTERED",
-        username: input.username.trim(),
-        usernameNormalized: normalizeLookupValue(input.username),
-        email: input.email.trim(),
-        emailNormalized: normalizeLookupValue(input.email),
-        passwordHash: input.passwordHash
-      }
-    });
+    return await prisma.$transaction(async (tx) => {
+      const updateResult = await tx.account.updateMany({
+        where: {
+          id: accountId,
+          type: "GUEST"
+        },
+        data: {
+          type: "REGISTERED",
+          username: input.username.trim(),
+          usernameNormalized: normalizeLookupValue(input.username),
+          email: input.email.trim(),
+          emailNormalized: normalizeLookupValue(input.email),
+          passwordHash: input.passwordHash
+        }
+      });
 
-    return mapAccountRecord(account);
-  } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === "P2025") {
+      if (updateResult.count !== 1) {
+        const existingAccount = await tx.account.findUnique({
+          where: { id: accountId }
+        });
+
+        if (!existingAccount) {
+          throw new Error("Account not found");
+        }
+
+        throw new Error("Account is already registered");
+      }
+
+      const account = await tx.account.findUnique({
+        where: { id: accountId }
+      });
+
+      if (!account) {
         throw new Error("Account not found");
       }
 
+      return mapAccountRecord(account);
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
         const targets = Array.isArray(error.meta?.target) ? error.meta.target : [];
 

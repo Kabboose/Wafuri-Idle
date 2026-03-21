@@ -84,12 +84,7 @@ export async function updatePlayerOptimistically(
     });
 
     if (updateResult.count === 1) {
-      return {
-        ...currentState,
-        ...mutation,
-        version: currentState.version + 1,
-        updatedAt: Date.now()
-      };
+      return getPlayerById(playerId);
     }
 
     attempts += 1;
