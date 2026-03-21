@@ -9,8 +9,8 @@ datasource db {
 
 model Player {
   id                  String   @id @default(uuid()) @db.Uuid
-  mana                Float    @default(0)
-  manaGenerationRate  Float    @default(1)
+  mana                String   @default("0")
+  manaGenerationRate  String   @default("1000000")
   teamPower           Int      @default(10)
   version             Int      @default(0)
   lastUpdateTimestamp DateTime @default(now())

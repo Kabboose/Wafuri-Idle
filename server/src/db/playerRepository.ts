@@ -1,6 +1,7 @@
 import type { Player, Prisma } from "@prisma/client";
 
 import { prisma } from "./prisma.js";
+import { parseFixed, stringifyFixed } from "../utils/fixedPoint.js";
 import type { PlayerMutation, PlayerState } from "../utils/playerTypes.js";
 
 export async function createPlayer(data: Prisma.PlayerCreateInput): Promise<Player> {
@@ -10,8 +11,8 @@ export async function createPlayer(data: Prisma.PlayerCreateInput): Promise<Play
 function mapPlayerRecord(player: Player): PlayerState {
   return {
     id: player.id,
-    mana: player.mana,
-    manaGenerationRate: player.manaGenerationRate,
+    mana: parseFixed(player.mana),
+    manaGenerationRate: parseFixed(player.manaGenerationRate),
     teamPower: player.teamPower,
     version: player.version,
     lastUpdateTimestamp: player.lastUpdateTimestamp.getTime(),
@@ -22,8 +23,8 @@ function mapPlayerRecord(player: Player): PlayerState {
 
 function mapMutationToUpdate(mutation: PlayerMutation): Prisma.PlayerUpdateInput {
   return {
-    mana: mutation.mana,
-    manaGenerationRate: mutation.manaGenerationRate,
+    mana: stringifyFixed(mutation.mana),
+    manaGenerationRate: stringifyFixed(mutation.manaGenerationRate),
     teamPower: mutation.teamPower,
     lastUpdateTimestamp: new Date(mutation.lastUpdateTimestamp)
   };

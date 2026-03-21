@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 
 type PlayerState = {
   id: string;
-  mana: number;
-  manaGenerationRate: number;
+  mana: string;
+  manaGenerationRate: string;
   teamPower: number;
   lastUpdateTimestamp: number;
 };
@@ -14,6 +14,21 @@ type AuthResponse = {
 };
 
 const AUTH_TOKEN_KEY = "wafuri-idle-token";
+
+function formatFixed(value: string): string {
+  const bigintValue = BigInt(value);
+  const negative = bigintValue < 0n;
+  const absolute = negative ? -bigintValue : bigintValue;
+  const whole = absolute / 1000000n;
+  const fraction = absolute % 1000000n;
+
+  if (fraction === 0n) {
+    return `${negative ? "-" : ""}${whole.toString()}`;
+  }
+
+  const trimmedFraction = fraction.toString().padStart(6, "0").replace(/0+$/, "");
+  return `${negative ? "-" : ""}${whole.toString()}.${trimmedFraction}`;
+}
 
 async function requestJson<T>(path: "/auth/guest" | "/state" | "/upgrade", method: "GET" | "POST", token?: string): Promise<T> {
   const response = await fetch(path, {
@@ -124,8 +139,8 @@ export default function App() {
       <h1>World Flipper-Inspired Idle Prototype</h1>
       {error ? <p>{error}</p> : null}
       <p>Player ID: {playerState?.id ?? "Unknown"}</p>
-      <p>Mana: {playerState ? playerState.mana.toFixed(2) : "0.00"}</p>
-      <p>Mana generation rate: {playerState ? playerState.manaGenerationRate.toFixed(2) : "0.00"} / sec</p>
+      <p>Mana: {playerState ? formatFixed(playerState.mana) : "0"}</p>
+      <p>Mana generation rate: {playerState ? formatFixed(playerState.manaGenerationRate) : "0"} / sec</p>
       <p>Team power: {playerState ? playerState.teamPower : 0}</p>
       <button type="button" onClick={() => void handleUpgrade()}>
         Upgrade Team

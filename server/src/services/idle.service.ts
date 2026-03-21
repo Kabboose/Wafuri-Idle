@@ -1,18 +1,17 @@
 import type { PlayerMutation, PlayerState } from "../utils/playerTypes.js";
+import { calculateManaGain, getEffectiveRate, RATE_UPGRADE_INCREMENT } from "../utils/fixedPoint.js";
 
-const TEAM_POWER_BONUS_PER_POINT = 0.02;
 const TEAM_POWER_UPGRADE_GAIN = 1;
-const MANA_RATE_UPGRADE_GAIN = 0.5;
 
-export function getEffectiveManaRate(player: Pick<PlayerState, "manaGenerationRate" | "teamPower">): number {
-  return player.manaGenerationRate * (1 + player.teamPower * TEAM_POWER_BONUS_PER_POINT);
+export function getEffectiveManaRate(player: Pick<PlayerState, "manaGenerationRate" | "teamPower">): bigint {
+  return getEffectiveRate(player.manaGenerationRate, player.teamPower);
 }
 
 export function calculateIdleProgress(player: PlayerState, now: number): PlayerMutation {
-  const elapsed = Math.max(now - player.lastUpdateTimestamp, 0) / 1000;
+  const elapsed = Math.max(now - player.lastUpdateTimestamp, 0);
 
   return {
-    mana: player.mana + elapsed * getEffectiveManaRate(player),
+    mana: player.mana + calculateManaGain(elapsed, player.manaGenerationRate, player.teamPower),
     manaGenerationRate: player.manaGenerationRate,
     teamPower: player.teamPower,
     lastUpdateTimestamp: now
@@ -24,8 +23,7 @@ export function applyUpgrade(player: PlayerState, now: number): PlayerMutation {
 
   return {
     ...progressed,
-    manaGenerationRate: progressed.manaGenerationRate + MANA_RATE_UPGRADE_GAIN,
+    manaGenerationRate: progressed.manaGenerationRate + RATE_UPGRADE_INCREMENT,
     teamPower: progressed.teamPower + TEAM_POWER_UPGRADE_GAIN
   };
 }
-

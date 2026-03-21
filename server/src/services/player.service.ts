@@ -1,13 +1,14 @@
 import { getPlayerById, updatePlayerOptimistically } from "../db/playerRepository.js";
 import { getCachedPlayerState, invalidateCachedPlayerState, setCachedPlayerState } from "./cacheService.js";
 import { applyUpgrade, calculateIdleProgress } from "./idle.service.js";
+import { stringifyFixed } from "../utils/fixedPoint.js";
 import type { PlayerState, SerializedPlayerState } from "../utils/playerTypes.js";
 
 function serializePlayer(player: PlayerState): SerializedPlayerState {
   return {
     id: player.id,
-    mana: player.mana,
-    manaGenerationRate: player.manaGenerationRate,
+    mana: stringifyFixed(player.mana),
+    manaGenerationRate: stringifyFixed(player.manaGenerationRate),
     teamPower: player.teamPower,
     lastUpdateTimestamp: player.lastUpdateTimestamp,
     createdAt: new Date(player.createdAt).toISOString(),
