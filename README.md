@@ -104,4 +104,4 @@ Available recipes:
 - `build`: build both server and client
 - `server`: run the backend dev server
 - `client`: run the frontend dev server
-- `dev`: do the full local startup flow, then run server and client together
+- `run`: do the full local startup flow, then run server and client together

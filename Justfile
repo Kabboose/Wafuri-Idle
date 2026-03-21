@@ -66,6 +66,6 @@ server:
 client:
   {{nvm}} && npm run dev --workspace client
 
-dev:
+run:
   just setup
   {{nvm}} && npm run dev --workspace server & SERVER_PID=$!; npm run dev --workspace client; STATUS=$?; kill $SERVER_PID; wait $SERVER_PID 2>/dev/null; exit $STATUS
