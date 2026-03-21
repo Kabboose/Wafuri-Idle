@@ -1,0 +1,12 @@
+-- CreateTable
+CREATE TABLE "players" (
+    "id" UUID NOT NULL,
+    "mana" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "manaGenerationRate" DOUBLE PRECISION NOT NULL DEFAULT 1,
+    "teamPower" INTEGER NOT NULL DEFAULT 10,
+    "lastUpdateTimestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "players_pkey" PRIMARY KEY ("id")
+);
