@@ -7,6 +7,16 @@ Phase 2 prototype for a World Flipper-inspired browser idle game built with Type
 - `server`: Express backend with stateless request handling, Prisma persistence, Redis-backed caching, and guest-session auth
 - `client`: React frontend that creates an anonymous guest session, polls the backend, and renders the current player state
 
+Backend layout:
+
+- `server/src/routes`: endpoint definitions only
+- `server/src/controllers`: request/response handling only
+- `server/src/services`: reusable application and game logic
+- `server/src/db`: Prisma client and repository queries
+- `server/src/middleware`: auth and shared HTTP middleware
+- `server/src/config`: environment-backed configuration
+- `server/src/utils`: shared pure helpers and serialization
+
 ## Phase 2 Features
 
 - Player state persists in PostgreSQL instead of process memory

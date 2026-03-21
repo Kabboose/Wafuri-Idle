@@ -1,4 +1,4 @@
-import type { SerializedPlayerState, SessionRecord } from "../types.js";
+import type { SerializedPlayerState, SessionRecord } from "../utils/playerTypes.js";
 import { redis } from "../db/redis.js";
 
 const PLAYER_CACHE_PREFIX = "player-state";
@@ -36,4 +36,3 @@ export async function getSession(token: string): Promise<SessionRecord | null> {
 
   return sessionPayload ? (JSON.parse(sessionPayload) as SessionRecord) : null;
 }
-

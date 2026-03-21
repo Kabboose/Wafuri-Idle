@@ -2,7 +2,7 @@ import "dotenv/config";
 import cors from "cors";
 import express from "express";
 
-import { validateConfig, config } from "./config.js";
+import { validateConfig, config } from "./config/index.js";
 import { prisma } from "./db/prisma.js";
 import { redis } from "./db/redis.js";
 import { authRoutes } from "./routes/authRoutes.js";

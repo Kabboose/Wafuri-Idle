@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 
-import { config } from "../config.js";
-import { prisma } from "../db/prisma.js";
+import { config } from "../config/index.js";
+import { createPlayer } from "../db/playerRepository.js";
 import { createSession } from "./cacheService.js";
 
 export type GuestAuthResponse = {
@@ -11,13 +11,11 @@ export type GuestAuthResponse = {
 
 export async function createGuestSession(): Promise<GuestAuthResponse> {
   const now = new Date();
-  const player = await prisma.player.create({
-    data: {
-      mana: 0,
-      manaGenerationRate: 1,
-      teamPower: 10,
-      lastUpdateTimestamp: now
-    }
+  const player = await createPlayer({
+    mana: 0,
+    manaGenerationRate: 1,
+    teamPower: 10,
+    lastUpdateTimestamp: now
   });
 
   const token = uuidv4();
@@ -28,4 +26,3 @@ export async function createGuestSession(): Promise<GuestAuthResponse> {
     playerId: player.id
   };
 }
-
