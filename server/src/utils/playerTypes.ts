@@ -8,6 +8,23 @@ export type SerializedPlayerState = {
   updatedAt: string;
 };
 
+export type PlayerState = {
+  id: string;
+  mana: number;
+  manaGenerationRate: number;
+  teamPower: number;
+  lastUpdateTimestamp: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type PlayerMutation = {
+  mana: number;
+  manaGenerationRate: number;
+  teamPower: number;
+  lastUpdateTimestamp: number;
+};
+
 export type AuthenticatedUser = {
   playerId: string;
 };

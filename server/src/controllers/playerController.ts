@@ -1,5 +1,5 @@
 import type { RequestHandler } from "express";
-import { getPlayerState, upgradePlayer } from "../services/playerService.js";
+import { getPlayerState, upgradePlayer } from "../services/player.service.js";
 
 export const getPlayerStateController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
