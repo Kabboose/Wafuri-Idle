@@ -98,6 +98,10 @@ Current Auth/API Flows:
 - `POST /auth/login`
   - authenticates username/password
   - issues access token + refresh token
+- `POST /auth/refresh`
+  - validates the hashed stored refresh token
+  - checks expiry and revocation
+  - returns a new access token only
 - `POST /auth/upgrade`
   - requires auth
   - upgrades the current guest account into a registered account
@@ -154,11 +158,25 @@ Current Balance/Config Notes:
 - Refresh token TTL is configurable and currently defaults to 30 days.
 
 Current Frontend State:
-- Minimal React client focused on function over polish.
-- Bootstraps auth through the guest flow.
-- Stores auth token client-side and uses it for player endpoints.
-- Displays mana, mana generation rate, and team power.
-- Auto-refreshes player state from the server.
+- React client now uses an explicit auth-entry state machine.
+- Auth state is modeled as:
+  - `loading`
+  - `needsSelection`
+  - `needsLogin`
+  - `authenticated`
+- The client does not auto-create guest accounts during bootstrap.
+- Guest account creation only happens from explicit user action through the entry screen.
+- Login and guest creation are routed through a dedicated auth hook instead of UI-owned request logic.
+- Stored access tokens are used for authenticated API requests.
+- The authenticated API client attempts refresh once on `401`, updates stored access token state, and retries once.
+- Failed auth during gameplay routes the app back into the auth state machine instead of leaving stale game state mounted.
+- The frontend currently includes:
+  - entry screen
+  - login screen
+  - authenticated game screen
+  - guest upgrade modal
+- The visual layer now has a simple dark-mode theme across the app.
+- The game screen displays mana, mana generation rate, and team power, and polls the server for updated state.
 
 Out of Scope / Not Built Yet:
 - Real multiplayer gameplay
@@ -166,10 +184,13 @@ Out of Scope / Not Built Yet:
 - Character collection / team-building depth
 - Pinball combat mechanics
 - Social systems
-- Production UI polish
+- Production-grade UI polish and refined UX flows
 - Background workers/queues
 - Email delivery for password reset
-- Refresh-token rotation or refresh endpoint
+- Refresh-token rotation and reuse-detection
+- Registration/login polish beyond the current basic forms
+- Full guest-to-registered UX polish around upgrade success/error states
+- Account settings / profile management
 
 Development Guidance:
 - Preserve strict layering.

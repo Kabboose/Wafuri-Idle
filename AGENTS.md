@@ -47,6 +47,15 @@ Rules:
 - Controllers read `req.user`.
 - Services receive only the plain ids they actually need.
 - Services must not know about Express or JWT internals.
+- Frontend auth entry must be state-driven:
+  - `loading`
+  - `needsSelection`
+  - `needsLogin`
+  - `authenticated`
+- Guest account creation must happen only from explicit user action.
+- Do not auto-create guest accounts during bootstrap or refresh fallback.
+- Access-token refresh may issue a new access token, but must not rotate refresh tokens unless that work is explicitly planned.
+- Failed authenticated requests must return control to the auth state machine instead of leaving stale authenticated UI mounted.
 - `Account` represents identity and authentication.
 - `Player` represents game state only.
 - Email and username must be normalized before persistence.
@@ -248,6 +257,10 @@ Do not log sensitive secrets or raw JWTs.
 - Do not move authoritative game logic into the client.
 - Keep client-side number formatting safe for string-based large values.
 - Keep API handling aligned with the success/error envelope.
+- Keep auth logic in auth modules/hooks, not inside UI components.
+- `App` should render from auth state only and should not duplicate bootstrap logic.
+- Authenticated screens must report auth failures back into the auth state machine.
+- Guest creation, login, refresh, and upgrade flows must go through shared auth helpers or hooks rather than ad hoc component fetch calls.
 
 ## Worker Compatibility
 
