@@ -13,6 +13,7 @@ export type PlayerState = {
   mana: number;
   manaGenerationRate: number;
   teamPower: number;
+  version: number;
   lastUpdateTimestamp: number;
   createdAt: number;
   updatedAt: number;

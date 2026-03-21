@@ -3,10 +3,6 @@ import type { Player, Prisma } from "@prisma/client";
 import { prisma } from "./prisma.js";
 import type { PlayerMutation, PlayerState } from "../utils/playerTypes.js";
 
-async function lockPlayerRow(tx: Prisma.TransactionClient, playerId: string): Promise<void> {
-  await tx.$queryRaw`SELECT id FROM "players" WHERE id = ${playerId}::uuid FOR UPDATE`;
-}
-
 export async function createPlayer(data: Prisma.PlayerCreateInput): Promise<Player> {
   return prisma.player.create({ data });
 }
@@ -17,6 +13,7 @@ function mapPlayerRecord(player: Player): PlayerState {
     mana: player.mana,
     manaGenerationRate: player.manaGenerationRate,
     teamPower: player.teamPower,
+    version: player.version,
     lastUpdateTimestamp: player.lastUpdateTimestamp.getTime(),
     createdAt: player.createdAt.getTime(),
     updatedAt: player.updatedAt.getTime()
@@ -32,26 +29,52 @@ function mapMutationToUpdate(mutation: PlayerMutation): Prisma.PlayerUpdateInput
   };
 }
 
+async function findPlayerById(playerId: string): Promise<Player> {
+  const player = await prisma.player.findUnique({
+    where: { id: playerId }
+  });
+
+  if (!player) {
+    throw new Error("Player not found");
+  }
+
+  return player;
+}
+
 export async function updatePlayerWithLock(
   playerId: string,
   buildUpdate: (player: PlayerState) => PlayerMutation
 ): Promise<PlayerState> {
-  return prisma.$transaction(async (tx) => {
-    await lockPlayerRow(tx, playerId);
+  let attempts = 0;
 
-    const player = await tx.player.findUnique({
-      where: { id: playerId }
+  while (attempts < 2) {
+    const player = await findPlayerById(playerId);
+    const currentState = mapPlayerRecord(player);
+    const mutation = buildUpdate(currentState);
+    const updateResult = await prisma.player.updateMany({
+      where: {
+        id: playerId,
+        version: currentState.version
+      },
+      data: {
+        ...mapMutationToUpdate(mutation),
+        version: {
+          increment: 1
+        }
+      }
     });
 
-    if (!player) {
-      throw new Error("Player not found");
+    if (updateResult.count === 1) {
+      return {
+        ...currentState,
+        ...mutation,
+        version: currentState.version + 1,
+        updatedAt: Date.now()
+      };
     }
 
-    const updated = await tx.player.update({
-      where: { id: playerId },
-      data: mapMutationToUpdate(buildUpdate(mapPlayerRecord(player)))
-    });
+    attempts += 1;
+  }
 
-    return mapPlayerRecord(updated);
-  });
+  throw new Error("Concurrent player update conflict");
 }
