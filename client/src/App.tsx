@@ -9,8 +9,10 @@ type PlayerState = {
 };
 
 type AuthResponse = {
-  token: string;
+  accountId: string;
   playerId: string;
+  accessToken: string;
+  refreshToken: string;
 };
 
 type ApiSuccessResponse<T> = {
@@ -64,9 +66,9 @@ async function ensureGuestToken(): Promise<string> {
   }
 
   const authResponse = await requestJson<AuthResponse>("/auth/guest", "POST");
-  window.localStorage.setItem(AUTH_TOKEN_KEY, authResponse.token);
+  window.localStorage.setItem(AUTH_TOKEN_KEY, authResponse.accessToken);
 
-  return authResponse.token;
+  return authResponse.accessToken;
 }
 
 /** Renders the minimal idle-game client and keeps the local view synced with the server. */

@@ -4,7 +4,9 @@ export const config = {
   databaseUrl: process.env.DATABASE_URL ?? "",
   redisUrl: process.env.REDIS_URL ?? "redis://127.0.0.1:6379",
   jwtSecret: process.env.JWT_SECRET ?? "",
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "30d"
+  accessTokenExpiresIn: process.env.ACCESS_TOKEN_EXPIRES_IN ?? "15m",
+  // Default refresh token lifetime: 30 days.
+  refreshTokenTtlMs: Number(process.env.REFRESH_TOKEN_TTL_MS ?? 1000 * 60 * 60 * 24 * 30)
 };
 
 /** Central game balance values used by services and utilities. */
@@ -42,5 +44,9 @@ export function validateConfig(): void {
 
   if (!config.jwtSecret) {
     throw new Error("JWT_SECRET is required");
+  }
+
+  if (!Number.isFinite(config.refreshTokenTtlMs) || config.refreshTokenTtlMs <= 0) {
+    throw new Error("REFRESH_TOKEN_TTL_MS must be a positive number");
   }
 }

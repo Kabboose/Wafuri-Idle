@@ -1,17 +1,33 @@
 import type { RequestHandler } from "express";
 
-import { issueAuthToken, createGuestSession } from "../services/authService.js";
+import { createSession } from "../db/sessionRepo.js";
+import { createGuestAccount } from "../services/auth/createGuestAccount.js";
 import { login } from "../services/auth/login.js";
 import { requestPasswordReset } from "../services/auth/requestPasswordReset.js";
 import { resetPassword } from "../services/auth/resetPassword.js";
 import { upgradeCurrentAccount } from "../services/auth/upgradeCurrentAccount.js";
+import { createAuthTokens } from "../utils/tokenUtils.js";
 
 /** Creates an anonymous player session and returns the auth token payload. */
 export const createGuestSessionController: RequestHandler = async (_request, response, next): Promise<void> => {
   try {
+    const guestAccount = await createGuestAccount();
+    const tokens = createAuthTokens(guestAccount.playerId);
+
+    await createSession({
+      accountId: guestAccount.accountId,
+      tokenHash: tokens.refreshTokenHash,
+      expiresAt: tokens.refreshTokenExpiresAt
+    });
+
     response.json({
       success: true,
-      data: await createGuestSession()
+      data: {
+        accountId: guestAccount.accountId,
+        playerId: guestAccount.playerId,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken
+      }
     });
   } catch (error) {
     next(error);
@@ -33,15 +49,28 @@ export const upgradeAccountController: RequestHandler = async (request, response
       password: string;
       email: string;
     };
+    const upgradeResult = await upgradeCurrentAccount({
+      playerId,
+      username,
+      password,
+      email
+    });
+    const tokens = createAuthTokens(playerId);
+
+    await createSession({
+      accountId: upgradeResult.accountId,
+      tokenHash: tokens.refreshTokenHash,
+      expiresAt: tokens.refreshTokenExpiresAt
+    });
 
     response.json({
       success: true,
-      data: await upgradeCurrentAccount({
+      data: {
+        ...upgradeResult,
         playerId,
-        username,
-        password,
-        email
-      })
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken
+      }
     });
   } catch (error) {
     next(error);
@@ -59,12 +88,20 @@ export const loginController: RequestHandler = async (request, response, next): 
       username,
       password
     });
+    const tokens = createAuthTokens(loginResult.playerId);
+
+    await createSession({
+      accountId: loginResult.accountId,
+      tokenHash: tokens.refreshTokenHash,
+      expiresAt: tokens.refreshTokenExpiresAt
+    });
 
     response.json({
       success: true,
       data: {
         ...loginResult,
-        token: issueAuthToken(loginResult.playerId)
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken
       }
     });
   } catch (error) {
