@@ -1,426 +1,281 @@
 Project: Wafuri-Idle
 
 Goal:
-Build a server-authoritative, browser-based idle game foundation inspired by World Flipper, with a clean backend architecture that can safely scale into multiplayer systems later.
+Build a server-authoritative, browser-based idle game inspired by World Flipper.
+
+The game combines:
+- idle progression (resource generation over time)
+- short active “burst run” gameplay loops
+- team synergy and future gacha systems
+- async-first multiplayer compatibility
+
+The architecture must support deterministic simulation, concurrency safety, and future scaling into multiplayer systems.
+
+---
 
 Core Stack:
 - Backend: Node.js + TypeScript + Express
 - Frontend: React + TypeScript + Vite
-- Database: PostgreSQL with Prisma
+- Database: PostgreSQL (Prisma)
 - Cache: Redis
-- Auth: JWT access tokens + hashed refresh-token sessions
-- Architecture: Request -> Route -> Controller -> Service -> DB
+- Auth: JWT access tokens + rotated, hashed refresh-token sessions
+- Architecture: Request → Route → Controller → Service → DB
+
+---
 
 Core Principles:
-- The server is authoritative. The client sends intent only.
-- Services contain game/application logic and stay reusable outside HTTP.
-- Given the same input state and `nowMs`, services must produce identical results.
-- PostgreSQL is the source of truth. Redis is cache only.
-- Player mutations must be concurrency-safe.
-- Large progression values must remain numerically safe long-term.
-- Config and feature flags are centralized.
+- Server authoritative; client sends intent only
+- Services keep business/application logic reusable outside HTTP
+- Services accept plain data and return plain data
+- Same input + same `nowMs` = same result
+- PostgreSQL is source of truth; Redis is cache only
+- All player mutations are concurrency-safe
+- Large numbers use fixed-point bigint (stored as strings)
+- Time is always passed explicitly (`nowMs`)
+- Config + feature flags centralized
+- API responses use the standard success/error envelope
+
+---
 
 Backend Structure:
-- `server/src/routes`: endpoint definitions only
-- `server/src/controllers`: request/response handling only
-- `server/src/services`: game and auth logic only
-- `server/src/db`: Prisma queries and repository access only
-- `server/src/middleware`: auth, logging, rate limiting, error handling
-- `server/src/config`: runtime config, game balance, feature flags
-- `server/src/utils`: pure helpers, shared types, math, logging utilities
+- routes → controllers → services → db
+- services contain business logic only
+- no Express objects in services
+- Prisma only in db layer
 
-Current Gameplay Foundation:
-- Idle mana progression is time-based and calculated on the server.
-- Team power boosts mana generation.
-- Upgrades increase both mana generation rate and team power.
-- Offline progress is capped via config.
-- Client polling displays server-calculated state only.
+---
 
-Current Player State Model:
-- `mana`
-- `manaGenerationRate`
-- `teamPower`
-- `lastUpdateTimestampMs`
-- `version`
-- `createdAt`
-- `updatedAt`
+Authentication + Identity (CURRENTLY IMPLEMENTED)
 
-Numeric Model:
-- Large numeric progression values are stored as strings in PostgreSQL.
-- Services use fixed-point `bigint` math internally.
-- API responses return large numeric values as strings.
-- Time units are explicit in milliseconds (`lastUpdateTimestampMs`, `elapsedMs`).
-- Time-dependent services must receive the current time as an argument rather than reading system time internally.
+System includes:
+- Guest accounts (explicit creation only)
+- Registered accounts with username + email + password
+- Guest → registered upgrade flow
+- JWT access tokens
+- Rotating refresh tokens (hashed in DB)
+- Session table with soft revocation (`revokedAt`)
+- Replay detection with account-wide session revocation
+- Logout (single session)
+- Logout-all (global session invalidation)
+- Immediate access-token invalidation via `sessionVersion`
 
-Concurrency + Persistence Model:
-- Backend is stateless for request handling across requests.
-- Player state is never stored in process memory as a source of truth.
-- Redis read flow: cache lookup -> DB on miss -> cache fill.
-- Mutation flow: DB first -> cache overwrite.
-- Player writes use optimistic locking with a `version` field.
-- Repository mutation paths retry once on version conflict, then fail explicitly.
-- Mutation endpoints should be safe to retry.
-- Critical operations may use idempotency keys where needed.
-- Session persistence exists only for authentication lifecycle management.
+Key behavior:
+- Refresh tokens rotate on every use
+- Reuse of old refresh token triggers replay detection
+- Replay detection revokes all sessions
+- Logout-all revokes all sessions AND invalidates all access tokens immediately
 
-Authentication + Identity:
-- Guest accounts are supported.
-- Registered accounts use username, email, and password.
-- Guest accounts can be upgraded in place to registered accounts.
-- `Account` represents identity and authentication.
-- `Player` represents game state only.
-- `Account` and `Player` are separate but linked 1:1.
-- `Session` stores hashed refresh tokens.
-- `PasswordResetToken` supports password reset with expiry and single-use semantics.
-- Email and username must be normalized before persistence.
-- Database uniqueness must rely on normalized values.
-- Account upgrade and password reset operations must be transactional.
+---
 
 Identity/Data Model:
-- `Account`
-  - account identity record
-  - supports `GUEST` and `REGISTERED`
-  - case-insensitive uniqueness through normalized username/email fields
-- `Player`
-  - gameplay state linked 1:1 to `Account`
-  - includes optimistic-lock `version`
-- `Session`
-  - linked 1:many from `Account`
-  - stores hashed refresh tokens with expiry/revocation support
-- `PasswordResetToken`
-  - linked 1:many from `Account`
-  - stores hashed reset tokens with expiry and used markers
-
-Current Auth/API Flows:
-- `POST /auth/guest`
-  - creates a guest account + player
-  - issues access token + refresh token
-- `POST /auth/login`
-  - authenticates username/password
-  - issues access token + refresh token
-- `POST /auth/refresh`
-  - validates the hashed stored refresh token
-  - checks expiry and revocation
-  - soft-revokes the current session and creates a rotated replacement session
-  - returns a new access token and a new refresh token
-  - logs refresh-token replay attempts and revokes remaining sessions for the account when replay is detected
-- `POST /auth/logout`
-  - accepts the current refresh token
-  - soft-revokes the matching active session if present
-  - remains safe to repeat even if the session is already missing or revoked
-- `POST /auth/logout-all`
-  - requires auth
-  - soft-revokes every active session for the authenticated account
-  - returns the number of revoked sessions
-- `POST /auth/upgrade`
-  - requires auth
-  - upgrades the current guest account into a registered account
-  - preserves the existing linked player record
-  - issues fresh access token + refresh token
-- `POST /auth/request-password-reset`
-  - generates and stores a hashed reset token
-  - currently returns the raw token for a future email-delivery layer
-  - returning the raw reset token is temporary for development only
-  - production must deliver reset tokens via a secure email channel only
-- `POST /auth/reset-password`
-  - validates token
-  - updates password
-  - consumes the token
-  - must remain single-use and safe under retry conditions
-
-Current Game/API Flows:
-- `GET /state`
-  - requires auth
-  - loads player state
-  - applies idle progress once
-  - persists updated state
-  - returns serialized player state
-- `POST /tick`
-  - requires auth
-  - applies idle progress once
-  - persists updated state
-  - returns serialized player state
-- `POST /upgrade`
-  - requires auth
-  - applies idle progress once
-  - applies upgrade once
-  - persists updated state
-  - returns serialized player state
-  - should remain safe under client and network retry conditions
-
-API Conventions:
-- Success responses use:
-  - `{ success: true, data: ... }`
-- Error responses use:
-  - `{ success: false, error: "message" }`
-- Client-facing response shapes should remain backward-compatible.
-
-Implemented Safety/Operations Layer:
-- JWT auth middleware attaches `req.user = { accountId, playerId }`
-- structured logging with `pino`
-- global error handler
-- rate limiting on mutation-heavy endpoints
-- explicit runtime config validation at startup
-
-Current Balance/Config Notes:
-- Game balance lives in `GAME_CONFIG`.
-- Feature switches live in `FEATURES`.
-- Current flags keep gacha and multiplayer disabled.
-- Refresh token TTL is configurable and currently defaults to 30 days.
-
-Current Frontend State:
-- React client now uses an explicit auth-entry state machine.
-- Auth state is modeled as:
-  - `loading`
-  - `needsSelection`
-  - `needsLogin`
-  - `authenticated`
-- The client does not auto-create guest accounts during bootstrap.
-- Guest account creation only happens from explicit user action through the entry screen.
-- Login and guest creation are routed through a dedicated auth hook instead of UI-owned request logic.
-- Stored access tokens are used for authenticated API requests.
-- The authenticated API client attempts refresh once on `401`, updates stored access and refresh token state atomically, and retries once.
-- Failed auth during gameplay routes the app back into the auth state machine instead of leaving stale game state mounted.
-- The auth hook exposes explicit `logout()` and `logoutAll()` actions.
-- The frontend currently includes:
-  - entry screen
-  - login screen
-  - authenticated game screen
-  - guest upgrade modal
-- The game screen exposes a `Save Progress` action that opens the guest-upgrade modal.
-- The visual layer now has a simple dark-mode theme across the app.
-- The game screen displays mana, mana generation rate, and team power, and polls the server for updated state.
-
-Out of Scope / Not Built Yet:
-- Real multiplayer gameplay
-- Gacha / summoning systems
-- Character collection / team-building depth
-- Pinball combat mechanics
-- Social systems
-- Production-grade UI polish and refined UX flows
-- Background workers/queues
-- Email delivery for password reset
-- Registration/login polish beyond the current basic forms
-- Full guest-to-registered UX polish around upgrade success/error states
-- Account settings / profile management
-- Session management UX beyond the current basic logout controls
-
-Development Guidance:
-- Preserve strict layering.
-- Keep services pure from Express concerns.
-- Services must not call `Date.now()` internally for game logic.
-- All time-dependent logic must receive `nowMs` as an argument.
-- Avoid hardcoded balance values in services.
-- Prefer explicit, composable functions over hidden coupling.
-- Treat retries, stale cache data, and concurrent requests as normal conditions.
-- Keep changes small, safe, and compatible with future workers and multiplayer systems.
-
-# ⚠️ Failure Scenarios and Expected Behavior
-
-The system must behave correctly under retries, race conditions, and partial failures.  
-These scenarios are considered normal operating conditions.
+- Account (identity + auth)
+  - type: GUEST | REGISTERED
+  - sessionVersion (for global invalidation)
+- Player (game state, 1:1 with Account)
+- Session (hashed refresh tokens, revocation-aware)
+- PasswordResetToken (hashed, single-use)
 
 ---
 
-## 🔁 1. Duplicate Request (Network Retry)
+Frontend Auth System (COMPLETE)
 
-**Scenario:**
-- Client sends `/upgrade`
-- Network times out
-- Client retries the same request
+Auth state machine:
+- loading
+- needsSelection (guest vs login)
+- needsLogin
+- authenticated
 
-**Expected Behavior:**
-- Account is upgraded exactly once
-- No duplicate accounts created
-- No conflicting username/email writes
-- Second request either:
-  - succeeds safely (no-op), or
-  - returns a controlled error (e.g. "already upgraded")
+Behavior:
+- no automatic guest creation
+- explicit user intent required
+- bootstrap attempts access → refresh → fallback
+- API client:
+  - attaches JWT
+  - retries once after refresh
+  - uses single-flight refresh pattern
+- auth failures reset app state cleanly
 
-**Key Safeguards:**
-- Unique constraints on username/email
-- Idempotent service logic
-
----
-
-## ⚔️ 2. Concurrent Upgrade Requests
-
-**Scenario:**
-- Two `/auth/upgrade` requests hit simultaneously
-
-**Expected Behavior:**
-- Only one succeeds
-- The other:
-  - fails cleanly OR
-  - resolves safely without corrupting state
-
-**Key Safeguards:**
-- DB uniqueness constraints
-- Transactional update
-- No partial writes
+UI includes:
+- entry screen
+- login screen
+- game screen
+- upgrade modal (“Save Progress”)
 
 ---
 
-## 🔐 3. Password Reset Token Reuse
+Current Gameplay Foundation (PROTOTYPE)
 
-**Scenario:**
-- Same reset token used twice
+- Idle resource generation exists (temporary mana-based system)
+- Upgrade system affects generation and power
+- Current authenticated gameplay endpoints are:
+  - `GET /state` applies idle progress only
+  - `POST /tick` applies idle progress only
+  - `POST /upgrade` applies idle progress once, then upgrade once
+- Player state:
+  - mana
+  - manaGenerationRate
+  - teamPower
+  - version
+  - lastUpdateTimestampMs
 
-**Expected Behavior:**
-- First request succeeds
-- Second request fails (token already used)
-
-**Key Safeguards:**
-- `usedAt` field
-- Atomic update (mark used + change password)
-
----
-
-## ⏳ 4. Expired Reset Token
-
-**Scenario:**
-- Token used after expiry
-
-**Expected Behavior:**
-- Request is rejected
-- No password change occurs
-
-**Key Safeguards:**
-- Expiry check in repo/service
-- Server time (`nowMs`) only
+This system is now considered **temporary scaffolding**.
+The future Energy / Run Charges loop below is target direction only, not current live behavior.
 
 ---
 
-## 🧪 5. Invalid Reset Token
+# 🚀 NEXT PHASE: CORE GAMEPLAY LOOP
 
-**Scenario:**
-- Token does not exist or hash mismatch
-
-**Expected Behavior:**
-- Request fails safely
-- No information leakage (do not reveal which part failed)
+The project is transitioning from prototype → real game loop.
 
 ---
 
-## 🔑 6. Concurrent Login Attempts
+## 🎯 Target Gameplay Direction
 
-**Scenario:**
-- Multiple login attempts with same credentials
+Inspired by World Flipper:
 
-**Expected Behavior:**
-- All valid attempts succeed independently
-- No corruption of session state
-
-**Key Safeguards:**
-- Stateless login service
-- Independent session creation
+> Build → Charge → Burst → Repeat
 
 ---
 
-## 🧨 7. Refresh Token Replay Detection
+## Core Gameplay Loop
 
-**Scenario:**
-- A previously rotated refresh token is reused
+Player fantasy:
+Build a team that unleashes powerful chained skill bursts.
 
-**Expected Behavior:**
-- Request fails with a generic invalid-token response
-- Replay is logged for monitoring
-- Remaining sessions for the affected account are revoked
+Core repeated action:
+Trigger short “runs” where the team auto-combats and chains abilities.
 
-**Key Safeguards:**
-- Soft revocation on token rotation
-- Historical token lookup for replay detection
-- Account-wide session revocation on replay
+Primary resources:
+- Energy (generated over time)
+- Run Charges (consume to start runs)
 
----
-
-## 🧱 8. Partial Failure During Upgrade
-
-**Scenario:**
-- Account updated but process crashes before completion
-
-**Expected Behavior:**
-- System remains consistent
-- No “half-upgraded” invalid state
-
-**Key Safeguards:**
-- DB transaction wrapping upgrade
+Primary decisions:
+- when to trigger runs
+- how to build team synergy
+- which units amplify chain effects
 
 ---
 
-## 🔄 9. Optimistic Lock Conflict (Gameplay)
+## Loop Structure
 
-**Scenario:**
-- Two `/tick` or `/upgrade` calls overlap
+### Idle Phase
+- generate Energy over time (offline supported)
+- accumulate capacity for runs
 
-**Expected Behavior:**
-- One succeeds
-- One retries once with fresh state
-- If still failing → controlled error
+### Active Phase (Burst Runs)
+- player triggers a run (10–30s simulated combat)
+- team auto-executes abilities
+- deterministic simulation
 
-**Key Safeguards:**
-- `version` field
-- retry logic in repository
-
----
-
-## 🧊 10. Stale Cache Read
-
-**Scenario:**
-- Redis returns outdated player state
-
-**Expected Behavior:**
-- DB write still succeeds correctly
-- No incorrect overwrite
-
-**Key Safeguards:**
-- DB as source of truth
-- version check on write
+### Result Phase
+- outputs:
+  - damage dealt
+  - combo count
+  - triggered effects
+- rewards granted based on performance
 
 ---
 
-## 🧠 11. Time Drift / Manipulation Attempt
+## Time Loops
 
-**Scenario:**
-- Client attempts to spoof timestamps
+5-minute loop:
+- trigger multiple runs
+- observe results
+- adjust team
 
-**Expected Behavior:**
-- No effect on progression
+1-hour loop:
+- optimize synergy
+- push higher performance
 
-**Key Safeguards:**
-- Server-only time (`nowMs`)
-- Client never sends authoritative time
-
----
-
-## 🚫 12. Guest Account Loss
-
-**Scenario:**
-- User loses JWT (no upgrade/email)
-
-**Expected Behavior:**
-- Account is unrecoverable
-
-**Design Decision:**
-- Accepted tradeoff for guest flow simplicity
+1-day loop:
+- accumulate idle energy
+- perform bulk runs
+- progress upgrades
 
 ---
 
-# 🧭 Guiding Principle
+## Design Requirements for Future Multiplayer
 
-When failures occur:
+Runs must be:
+- deterministic
+- reproducible
+- comparable
+- aggregatable
 
-- Do not corrupt state  
-- Do not double-apply mutations  
-- Do not trust the client  
-- Fail explicitly and safely  
+Run output must be structured:
+- damage
+- combo
+- triggers
+
+This enables:
+- async co-op (guild boss)
+- leaderboards
+- shared progression systems
 
 ---
 
-# ✅ Why This Matters
+## Planned Multiplayer Path (NOT IMPLEMENTED YET)
 
-This ensures:
-- safe retries
-- safe scaling (workers later)
-- predictable debugging
-- no “ghost bugs” in progression
+Phase approach:
+1. Async contribution systems (guild boss)
+2. Leaderboards
+3. Shared buffs
+4. Real-time co-op (later)
+
+---
+
+# 🔜 NEXT IMPLEMENTATION PHASE
+
+Phase 4a: Run Simulation System
+
+Do NOT build:
+- full inventory
+- full gacha
+- multiplayer
+
+Build:
+
+- deterministic run simulation service:
+  - `runPlayer(playerState, teamConfig, seed, nowMs)`
+
+- minimal result model:
+  - damage
+  - combo
+  - triggers
+
+- reward pipeline based on run results
+
+---
+
+# ⚠️ OUT OF SCOPE (FOR NOW)
+
+- real multiplayer
+- gacha system implementation
+- character collection depth
+- combat physics / pinball mechanics
+- advanced UI polish
+- social systems
+
+---
+
+# 🧭 DEVELOPMENT GUIDANCE
+
+- keep systems minimal and composable
+- do not overbuild before loop is validated
+- prefer deterministic simulation over real-time complexity
+- design all systems to be multiplayer-compatible, but not multiplayer-dependent
+- build for extension, not completeness
+
+---
+
+# 🧠 GUIDING PRINCIPLE
+
+You are no longer building:
+
+> “numbers go up”
+
+You are building:
+
+> “repeatable, exciting gameplay moments”
+
+Everything should support that.
