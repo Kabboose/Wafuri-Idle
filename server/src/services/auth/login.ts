@@ -1,7 +1,6 @@
-import argon2 from "argon2";
-
 import { findAccountByUsername } from "../../db/accountRepo.js";
 import { findPlayerIdentityByAccountId } from "../../db/identityRepo.js";
+import { verifyPassword } from "../../utils/passwordHash.js";
 
 export type LoginInput = {
   username: string;
@@ -29,7 +28,7 @@ export async function login(input: LoginInput): Promise<LoginResult> {
     throw new Error("Invalid credentials");
   }
 
-  const passwordMatches = await argon2.verify(account.passwordHash, input.password);
+  const passwordMatches = await verifyPassword(input.password, account.passwordHash);
 
   if (!passwordMatches) {
     throw new Error("Invalid credentials");

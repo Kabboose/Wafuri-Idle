@@ -34,7 +34,7 @@ Game balance and feature toggles live in [server/src/config/index.ts](/home/alex
 
 ## Run
 
-This repo requires Node.js 20+ and npm.
+This repo requires Node.js 24+ and npm.
 
 1. Create the server env file:
 

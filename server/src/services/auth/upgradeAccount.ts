@@ -1,6 +1,5 @@
-import argon2 from "argon2";
-
 import { upgradeAccountToRegistered } from "../../db/accountRepo.js";
+import { hashPassword } from "../../utils/passwordHash.js";
 
 export type UpgradeAccountInput = {
   accountId: string;
@@ -21,7 +20,7 @@ export type UpgradeAccountResult = {
  * Accepts the target account id plus registration credentials and returns plain account data.
  */
 export async function upgradeAccount(input: UpgradeAccountInput): Promise<UpgradeAccountResult> {
-  const passwordHash = await argon2.hash(input.password);
+  const passwordHash = await hashPassword(input.password);
   const updatedAccount = await upgradeAccountToRegistered(input.accountId, {
     username: input.username,
     email: input.email,

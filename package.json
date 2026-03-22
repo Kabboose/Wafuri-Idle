@@ -5,6 +5,9 @@
     "server",
     "client"
   ],
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "install:all": "npm install --workspaces",
     "prisma:generate": "npm run prisma:generate --workspace server",

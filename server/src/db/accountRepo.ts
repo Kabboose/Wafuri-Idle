@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 
-import { Prisma, type Account } from "@prisma/client";
+import { Prisma, type Account } from "../generated/prisma/client.js";
 
 import { prisma } from "./prisma.js";
 import type { AccountRecord, CreateAccountInput, UpdateAccountInput } from "../utils/identityTypes.js";

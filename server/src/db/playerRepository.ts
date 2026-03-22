@@ -1,4 +1,4 @@
-import type { Player, Prisma } from "@prisma/client";
+import type { Player, Prisma } from "../generated/prisma/client.js";
 
 import { prisma } from "./prisma.js";
 import { parseFixed, stringifyFixed } from "../utils/fixedPoint.js";

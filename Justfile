@@ -1,6 +1,6 @@
 set shell := ["bash", "-lc"]
 
-nvm := "source ~/.nvm/nvm.sh"
+nvm := "source ~/.nvm/nvm.sh && nvm use"
 server_env := "server/.env"
 server_env_example := "server/.env.example"
 compose := "docker compose"

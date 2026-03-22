@@ -1,4 +1,4 @@
-import type { Account } from "@prisma/client";
+import type { Account } from "../generated/prisma/client.js";
 
 import { prisma } from "./prisma.js";
 import type { AccountRecord, CreateAccountInput, CreatePlayerInput, PlayerRecord } from "../utils/identityTypes.js";
