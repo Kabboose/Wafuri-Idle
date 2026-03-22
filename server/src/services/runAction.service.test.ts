@@ -60,7 +60,11 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
     timestampMs: 0,
     phase: "RUN_START"
   });
-  assert.deepEqual(result.runResult.playback?.events.at(-1), {
+  const finishEventIndex = result.runResult.playback?.events.findIndex(
+    (event) => event.kind === "PHASE" && event.phase === "FINISH"
+  ) ?? -1;
+  assert.notEqual(finishEventIndex, -1);
+  assert.deepEqual(result.runResult.playback?.events[finishEventIndex], {
     kind: "PHASE",
     timestampMs: 10_000,
     phase: "FINISH"
@@ -68,6 +72,7 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
   assert.equal(result.runResult.playback?.events.filter((event) => event.kind === "BALL_PATH").length, 20);
   assert.equal(result.runResult.playback?.events.filter((event) => event.kind === "COLLISION").length, 10);
   assert.equal(result.runResult.playback?.events.filter((event) => event.kind === "DAMAGE").length, 10);
+  assert.equal(result.runResult.playback?.events.filter((event) => event.kind === "TRIGGER").length, 14);
   assert.equal(result.rewardResult.grantedResources.currency, "20000");
   assert.equal(result.rewardResult.grantedResources.progression, "10000000");
   assert.equal(result.player.energy, "22000000");

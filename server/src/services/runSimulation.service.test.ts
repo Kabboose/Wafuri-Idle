@@ -66,8 +66,11 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     timestampMs: 0,
     phase: "RUN_START"
   });
-  assert.equal(result.playback?.events.at(-1)?.kind, "PHASE");
-  assert.deepEqual(result.playback?.events.at(-1), {
+  const finishEventIndex = result.playback?.events.findIndex(
+    (event) => event.kind === "PHASE" && event.phase === "FINISH"
+  ) ?? -1;
+  assert.notEqual(finishEventIndex, -1);
+  assert.deepEqual(result.playback?.events[finishEventIndex], {
     kind: "PHASE",
     timestampMs: 10_000,
     phase: "FINISH"
@@ -76,9 +79,11 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   const ballPathEvents = result.playback?.events.filter((event) => event.kind === "BALL_PATH") ?? [];
   const collisionEvents = result.playback?.events.filter((event) => event.kind === "COLLISION") ?? [];
   const damageEvents = result.playback?.events.filter((event) => event.kind === "DAMAGE") ?? [];
+  const triggerEvents = result.playback?.events.filter((event) => event.kind === "TRIGGER") ?? [];
   assert.equal(ballPathEvents.length, 20);
   assert.equal(collisionEvents.length, 10);
   assert.equal(damageEvents.length, 10);
+  assert.equal(triggerEvents.length, 14);
   assert.ok(ballPathEvents.every((event) => event.tStart >= 0 && event.tEnd <= 10_000 && event.tStart < event.tEnd));
   assert.ok(ballPathEvents.every((event) => event.fromX >= 0 && event.fromX <= 1));
   assert.ok(ballPathEvents.every((event) => event.fromY >= 0 && event.fromY <= 1));
@@ -87,6 +92,16 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.ok(collisionEvents.every((event) => event.x >= 0 && event.x <= 1));
   assert.ok(collisionEvents.every((event) => event.y >= 0 && event.y <= 1));
   assert.ok(collisionEvents.every((event) => event.collisionKind === "BALL_ENEMY"));
+  assert.ok(triggerEvents.every((event) => event.timestampMs >= 0 && event.timestampMs <= 10_000));
+
+  const impactBurstEvents = triggerEvents.filter((event) => event.triggerType === "impact-burst");
+  const comboMilestoneEvents = triggerEvents.filter((event) => event.triggerType === "combo-milestone");
+  const enemyDefeatedEvents = triggerEvents.filter((event) => event.triggerType === "enemy-defeated");
+  const runEndBurstEvents = triggerEvents.filter((event) => event.triggerType === "run-end-burst");
+  assert.equal(impactBurstEvents.length, 10);
+  assert.equal(comboMilestoneEvents.length, 2);
+  assert.equal(enemyDefeatedEvents.length, 1);
+  assert.equal(runEndBurstEvents.length, 1);
 
   const inboundPathEvents = ballPathEvents.filter((event) => event.toX === result.playback?.entities[1]?.spawnX && event.toY === result.playback?.entities[1]?.spawnY);
   assert.equal(inboundPathEvents.length, 10);
@@ -96,6 +111,10 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   );
   assert.deepEqual(
     damageEvents.map((event) => event.timestampMs),
+    collisionEvents.map((event) => event.timestampMs)
+  );
+  assert.deepEqual(
+    impactBurstEvents.map((event) => event.timestampMs),
     collisionEvents.map((event) => event.timestampMs)
   );
   assert.deepEqual(
@@ -111,6 +130,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     const collisionEventIndex: number = result.playback?.events.findIndex((event) => event === collisionEvents[index]) ?? -1;
     assert.notEqual(collisionEventIndex, -1);
     assert.equal(result.playback?.events[collisionEventIndex + 1]?.kind, "DAMAGE");
+    assert.equal(result.playback?.events[collisionEventIndex + 2]?.kind, "TRIGGER");
   }
 
   const entityIds = new Set(result.playback?.entities.map((entity) => entity.id) ?? []);
@@ -153,5 +173,13 @@ test("simulateRun applies crit logic deterministically", () => {
   assert.equal(result.totalDamage, "20000");
   assert.ok(result.triggers.every((trigger) => trigger.type === "critical-hit"));
   const damageEvents = result.playback?.events.filter((event) => event.kind === "DAMAGE") ?? [];
+  const impactBurstEvents = result.playback?.events.filter(
+    (event): event is Extract<PlaybackEvent, { kind: "TRIGGER" }> =>
+      event.kind === "TRIGGER" && event.triggerType === "impact-burst"
+  ) ?? [];
   assert.ok(damageEvents.every((event) => event.isCrit));
+  assert.deepEqual(
+    impactBurstEvents.map((event) => event.value),
+    damageEvents.map((event) => event.damage)
+  );
 });

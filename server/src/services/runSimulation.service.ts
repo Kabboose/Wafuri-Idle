@@ -9,7 +9,8 @@ import type {
   RunInput,
   RunPlayback,
   RunResult,
-  RunTriggerEvent
+  RunTriggerEvent,
+  TriggerEvent
 } from "../utils/runTypes.js";
 
 const DEFAULT_RUN_DURATION_MS = GAME_CONFIG.run.defaultDurationMs;
@@ -201,8 +202,42 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
       comboAfter: hit.comboAfter,
       isCrit: hit.isCrit
     };
+    const triggerEvents: TriggerEvent[] = [
+      {
+        kind: "TRIGGER",
+        timestampMs: approachEnd,
+        triggerType: "impact-burst",
+        sourceEntityId: ballEntity.id,
+        x: enemyEntity.spawnX,
+        y: enemyEntity.spawnY,
+        value: hit.damage.toString()
+      }
+    ];
 
-    events.push(approachEvent, collisionEvent, damageEvent);
+    if (hit.comboAfter % 5 === 0) {
+      triggerEvents.push({
+        kind: "TRIGGER",
+        timestampMs: approachEnd,
+        triggerType: "combo-milestone",
+        sourceEntityId: ballEntity.id,
+        x: enemyEntity.spawnX,
+        y: enemyEntity.spawnY,
+        comboDelta: hit.comboAfter
+      });
+    }
+
+    if (hit.comboAfter === hits.length) {
+      triggerEvents.push({
+        kind: "TRIGGER",
+        timestampMs: approachEnd,
+        triggerType: "enemy-defeated",
+        sourceEntityId: enemyEntity.id,
+        x: enemyEntity.spawnX,
+        y: enemyEntity.spawnY
+      });
+    }
+
+    events.push(approachEvent, collisionEvent, damageEvent, ...triggerEvents);
 
     if (reboundStart < reboundEnd) {
       events.push({
@@ -240,6 +275,12 @@ function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]):
       phase: "FINISH"
     }
   ];
+  const endBurstEvent: TriggerEvent = {
+    kind: "TRIGGER",
+    timestampMs: durationMs,
+    triggerType: "run-end-burst",
+    sourceEntityId: "ball-1"
+  };
 
   const playback: RunPlayback = {
     durationMs,
@@ -249,7 +290,7 @@ function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]):
       zones: []
     },
     entities,
-    events: [phaseEvents[0], ...motionEvents, phaseEvents[1]]
+    events: [phaseEvents[0], ...motionEvents, phaseEvents[1], endBurstEvent]
   };
 
   validatePlayback(playback);
