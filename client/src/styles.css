@@ -51,6 +51,14 @@ main,
   padding: 28px;
 }
 
+.game-screen-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
 h1 {
   margin: 0 0 20px;
   color: #f8fafc;
@@ -125,6 +133,61 @@ button:active {
   background: rgba(51, 65, 85, 0.9);
 }
 
+.settings-menu {
+  position: relative;
+}
+
+.settings-menu summary {
+  list-style: none;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border-radius: 10px;
+  background: rgba(51, 65, 85, 0.9);
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+
+.settings-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.settings-menu summary span {
+  width: 20px;
+  height: 2px;
+  border-radius: 999px;
+  background: #f8fafc;
+}
+
+.settings-menu[open] summary {
+  background: rgba(71, 85, 105, 0.95);
+}
+
+.settings-menu-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 10;
+  width: 220px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.settings-menu-panel button {
+  width: 100%;
+}
+
 .error-text {
   color: #fca5a5;
 }
@@ -150,6 +213,17 @@ button:active {
   .modal-card {
     padding: 20px;
     border-radius: 14px;
+  }
+
+  .game-screen-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-menu-panel {
+    position: static;
+    width: 100%;
+    margin-top: 10px;
   }
 
   h1 {

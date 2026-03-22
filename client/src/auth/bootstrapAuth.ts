@@ -7,6 +7,8 @@ export type PlayerState = {
   accountType: "GUEST" | "REGISTERED";
   energy: string;
   maxEnergy: string;
+  currency: string;
+  progression: string;
   energyPerSecond: string;
   teamPower: number;
   lastUpdateTimestampMs: number;

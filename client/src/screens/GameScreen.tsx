@@ -5,6 +5,37 @@ import type { PlayerState } from "../auth/bootstrapAuth";
 import { UpgradeModal } from "../components/UpgradeModal";
 import { loadPlayer } from "../game/loadPlayer";
 
+type RunResult = {
+  totalDamage: string;
+  comboCount: number;
+  triggers: Array<{
+    type: string;
+    source: string;
+    timestampMs: number;
+    value?: string;
+    comboDelta?: number;
+  }>;
+  durationMs: number;
+};
+
+type RewardResult = {
+  grantedResources: Record<string, string>;
+  bonusTriggers: Array<{
+    type: string;
+    source: string;
+    timestampMs: number;
+    value?: string;
+    comboDelta?: number;
+  }>;
+  summary: string[];
+};
+
+type RunActionResponse = {
+  player: PlayerState;
+  runResult: RunResult;
+  rewardResult: RewardResult;
+};
+
 /** Formats fixed-point strings from the API into readable decimal values for display. */
 function formatFixed(value: string): string {
   const bigintValue = BigInt(value);
@@ -21,6 +52,31 @@ function formatFixed(value: string): string {
   return `${negative ? "-" : ""}${whole.toString()}.${trimmedFraction}`;
 }
 
+/** Formats fixed-point strings into whole-unit strings by dropping any fractional remainder. */
+function formatWholeFixed(value: string): string {
+  const bigintValue = BigInt(value);
+  const negative = bigintValue < 0n;
+  const absolute = negative ? -bigintValue : bigintValue;
+  const whole = absolute / 1000000n;
+
+  return `${negative ? "-" : ""}${whole.toString()}`;
+}
+
+/** Builds the temporary client-side run request payload expected by the current backend API. */
+function buildRunRequest(playerState: PlayerState): {
+  power: string;
+  speed: number;
+  critChance: number;
+  runDurationMs: number;
+} {
+  return {
+    power: (BigInt(playerState.teamPower) * 1000n).toString(),
+    speed: 1,
+    critChance: 2500,
+    runDurationMs: 10_000
+  };
+}
+
 /** Renders the authenticated game view and keeps the displayed player state synced with the server. */
 export function GameScreen({
   onAuthFailure,
@@ -35,6 +91,8 @@ export function GameScreen({
 }) {
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
+  const [latestRunResult, setLatestRunResult] = useState<RunResult | null>(null);
+  const [latestRewardResult, setLatestRewardResult] = useState<RewardResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -109,32 +167,78 @@ export function GameScreen({
     }
   };
 
+  const handleRun = async () => {
+    if (!playerState) {
+      return;
+    }
+
+    try {
+      const runActionResult = await apiPost<RunActionResponse>("/run", buildRunRequest(playerState));
+      setPlayerState(runActionResult.player);
+      setLatestRunResult(runActionResult.runResult);
+      setLatestRewardResult(runActionResult.rewardResult);
+      setError(null);
+    } catch (requestError) {
+      if (requestError instanceof AuthError) {
+        onAuthFailure();
+        return;
+      }
+
+      setError(requestError instanceof Error ? requestError.message : "Unknown error");
+    }
+  };
+
   if (!playerState) {
     return <main className="screen-shell">Loading...</main>;
   }
 
   return (
     <main className="game-screen">
-      <h1>World Flipper-Inspired Idle Prototype</h1>
+      <div className="game-screen-header">
+        <h1>World Flipper-Inspired Idle Prototype</h1>
+        <details className="settings-menu">
+          <summary aria-label="Open settings menu">
+            <span />
+            <span />
+            <span />
+          </summary>
+          <div className="settings-menu-panel">
+            <button type="button" className="secondary-button" onClick={() => void logout()}>
+              Log Out
+            </button>
+            <button type="button" className="secondary-button" onClick={() => void logoutAll()}>
+              Log Out All Devices
+            </button>
+          </div>
+        </details>
+      </div>
       {error ? <p className="error-text">{error}</p> : null}
       <p>Player ID: {playerState.id}</p>
-      <p>Energy: {formatFixed(playerState.energy)}</p>
+      <p>Energy: {formatWholeFixed(playerState.energy)}</p>
+      <p>Max energy: {formatWholeFixed(playerState.maxEnergy)}</p>
+      <p>Currency: {formatFixed(playerState.currency)}</p>
+      <p>Progression: {formatFixed(playerState.progression)}</p>
       <p>Energy per second: {formatFixed(playerState.energyPerSecond)} / sec</p>
       <p>Team power: {playerState.teamPower}</p>
+      {latestRunResult ? (
+        <>
+          <p>Last run damage: {latestRunResult.totalDamage}</p>
+          <p>Last run combo: {latestRunResult.comboCount}</p>
+          <p>Last run currency: {formatFixed(latestRewardResult?.grantedResources.currency ?? "0")}</p>
+          <p>Last run progression: {formatFixed(latestRewardResult?.grantedResources.progression ?? "0")}</p>
+        </>
+      ) : null}
       <div className="button-row">
         {playerState.accountType === "GUEST" ? (
           <button type="button" className="secondary-button" onClick={() => setIsUpgradeOpen(true)}>
             Save Progress
           </button>
         ) : null}
+        <button type="button" onClick={() => void handleRun()}>
+          Start Run
+        </button>
         <button type="button" onClick={() => void handleUpgrade()}>
           Upgrade Team
-        </button>
-        <button type="button" className="secondary-button" onClick={() => void logout()}>
-          Log Out
-        </button>
-        <button type="button" className="secondary-button" onClick={() => void logoutAll()}>
-          Log Out All Devices
         </button>
       </div>
       {isUpgradeOpen ? (
