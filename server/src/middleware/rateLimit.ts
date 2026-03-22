@@ -22,3 +22,12 @@ export const tickRateLimiter = rateLimit({
   legacyHeaders: false,
   message: errorResponse
 });
+
+/** Rate limit for run requests, which trigger a full gameplay mutation flow. */
+export const runRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: errorResponse
+});
