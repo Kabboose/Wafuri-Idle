@@ -1,13 +1,10 @@
 import { clearTokens, getRefreshToken, setTokens } from "./tokenStore";
+import { API_PATHS } from "../generated/openapi-client";
+import type { RefreshResponse } from "../generated/openapi-types";
 
 type ApiSuccessResponse<T> = {
   success: true;
   data: T;
-};
-
-type RefreshResponse = {
-  accessToken: string;
-  refreshToken: string;
 };
 
 let refreshInFlight: Promise<string | null> | null = null;
@@ -23,7 +20,7 @@ export async function refreshAccessToken(): Promise<string | null> {
           throw new Error("Missing refresh token");
         }
 
-        const response = await fetch("/auth/refresh", {
+        const response = await fetch(API_PATHS.REFRESH_SESSION, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -35,7 +32,7 @@ export async function refreshAccessToken(): Promise<string | null> {
           throw new Error(`Refresh failed: ${response.status}`);
         }
 
-        const payload = (await response.json()) as ApiSuccessResponse<RefreshResponse>;
+        const payload = (await response.json()) as RefreshResponse | ApiSuccessResponse<never>;
         setTokens(payload.data.accessToken, payload.data.refreshToken);
 
         return payload.data.accessToken;

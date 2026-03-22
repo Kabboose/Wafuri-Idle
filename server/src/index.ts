@@ -7,6 +7,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import { requestLogger } from "./middleware/requestLogger.js";
 import { authRoutes } from "./routes/authRoutes.js";
 import { healthRoutes } from "./routes/healthRoutes.js";
+import { openApiRoutes } from "./routes/openApiRoutes.js";
 import { playerRoutes } from "./routes/playerRoutes.js";
 import { logger } from "./utils/logger.js";
 
@@ -19,6 +20,7 @@ app.use(express.json());
 app.use(requestLogger);
 
 app.use(healthRoutes);
+app.use(openApiRoutes);
 app.use("/auth", authRoutes);
 app.use(playerRoutes);
 

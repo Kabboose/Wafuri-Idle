@@ -1,22 +1,14 @@
 import { clearTokens, getAccessToken, getRefreshToken } from "./tokenStore";
 import { hasEverAuthenticated, markAuthenticatedOnce, type AuthState } from "./authState";
+import { API_PATHS } from "../generated/openapi-client";
 import { refreshAccessToken } from "./refreshAccessToken";
+import type { PlayerState as ApiPlayerState } from "../generated/openapi-types";
 
-export type PlayerState = {
-  id: string;
-  accountType: "GUEST" | "REGISTERED";
-  energy: string;
-  maxEnergy: string;
-  currency: string;
-  progression: string;
-  energyPerSecond: string;
-  teamPower: number;
-  lastUpdateTimestampMs: number;
-};
+export type PlayerState = ApiPlayerState;
 
 /** Validates an access token by probing the authenticated state endpoint. */
 async function validateAccessToken(accessToken: string): Promise<boolean> {
-  const response = await fetch("/state", {
+  const response = await fetch(API_PATHS.GET_PLAYER_STATE, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",

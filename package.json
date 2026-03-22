@@ -13,6 +13,8 @@
     "install:all": "npm install --workspaces",
     "prisma:generate": "npm run prisma:generate --workspace server",
     "prisma:migrate": "npm run prisma:migrate --workspace server",
+    "openapi:generate": "node ./scripts/generate-openapi.mjs",
+    "openapi:check": "node ./scripts/validate-openapi.mjs",
     "lint": "eslint server/src client/src",
     "dev": "npm run dev --workspace server",
     "dev:client": "npm run dev --workspace client",

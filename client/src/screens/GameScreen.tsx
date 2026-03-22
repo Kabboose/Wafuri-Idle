@@ -1,102 +1,12 @@
 import { useEffect, useState } from "react";
 
-import { apiPost, AuthError } from "../api/client";
+import { AuthError } from "../api/client";
 import type { PlayerState } from "../auth/bootstrapAuth";
 import { UpgradeModal } from "../components/UpgradeModal";
 import { GAMEPLAY_CONFIG } from "../config/gameplay";
+import { runPlayer, upgradePlayer } from "../generated/openapi-client";
+import type { RewardResult, RunRequest, RunResult } from "../generated/openapi-types";
 import { loadPlayer } from "../game/loadPlayer";
-
-type RunResult = {
-  totalDamage: string;
-  comboCount: number;
-  triggers: Array<{
-    type: string;
-    source: string;
-    timestampMs: number;
-    value?: string;
-    comboDelta?: number;
-  }>;
-  durationMs: number;
-  playback: {
-    durationMs: number;
-    arena: {
-      width: number;
-      height: number;
-      zones: Array<Record<string, never>>;
-    };
-    entities: Array<{
-      id: string;
-      kind: "BALL" | "ENEMY";
-      spawnX: number;
-      spawnY: number;
-    }>;
-    events: Array<
-      | {
-          kind: "BALL_PATH";
-          timelineStartMs: number;
-          timelineEndMs: number;
-          entityId: string;
-          fromX: number;
-          fromY: number;
-          toX: number;
-          toY: number;
-        }
-      | {
-          kind: "COLLISION";
-          timelineTimestampMs: number;
-          sourceEntityId: string;
-          targetEntityId: string;
-          collisionKind: "BALL_ENEMY";
-          x: number;
-          y: number;
-        }
-      | {
-          kind: "DAMAGE";
-          timelineTimestampMs: number;
-          sourceEntityId: string;
-          targetEntityId: string;
-          x: number;
-          y: number;
-          damage: string;
-          comboAfter: number;
-          isCrit: boolean;
-        }
-      | {
-          kind: "TRIGGER";
-          timelineTimestampMs: number;
-          triggerType: string;
-          sourceEntityId: string;
-          x?: number;
-          y?: number;
-          value?: string;
-          comboDelta?: number;
-        }
-      | {
-          kind: "PHASE";
-          timelineTimestampMs: number;
-          phase: "RUN_START" | "FINISH";
-        }
-    >;
-  };
-};
-
-type RewardResult = {
-  grantedResources: Record<string, string>;
-  bonusTriggers: Array<{
-    type: string;
-    source: string;
-    timestampMs: number;
-    value?: string;
-    comboDelta?: number;
-  }>;
-  summary: string[];
-};
-
-type RunActionResponse = {
-  player: PlayerState;
-  runResult: RunResult;
-  rewardResult: RewardResult;
-};
 
 /** Formats fixed-point strings from the API into readable decimal values for display. */
 function formatFixed(value: string): string {
@@ -125,12 +35,7 @@ function formatWholeFixed(value: string): string {
 }
 
 /** Builds the temporary client-side run request payload expected by the current backend API. */
-function buildRunRequest(playerState: PlayerState): {
-  power: string;
-  speed: number;
-  critChance: number;
-  runDurationMs: number;
-} {
+function buildRunRequest(playerState: PlayerState): RunRequest {
   return {
     power: (BigInt(playerState.teamPower) * GAMEPLAY_CONFIG.run.powerScalePerTeamPower).toString(),
     speed: GAMEPLAY_CONFIG.run.defaultSpeed,
@@ -216,7 +121,7 @@ export function GameScreen({
 
   const handleUpgrade = async () => {
     try {
-      const nextState = await apiPost<PlayerState>("/upgrade");
+      const nextState = await upgradePlayer();
       setPlayerState(nextState);
       setError(null);
     } catch (requestError) {
@@ -235,7 +140,7 @@ export function GameScreen({
     }
 
     try {
-      const runActionResult = await apiPost<RunActionResponse>("/run", buildRunRequest(playerState));
+      const runActionResult = await runPlayer(buildRunRequest(playerState));
       setPlayerState(runActionResult.player);
       setLatestRunResult(runActionResult.runResult);
       setLatestRewardResult(runActionResult.rewardResult);

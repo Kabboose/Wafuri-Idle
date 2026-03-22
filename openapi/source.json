@@ -1,0 +1,1250 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Wafuri-Idle API",
+    "version": "0.1.0",
+    "description": "Initial OpenAPI foundation for the current authenticated auth and gameplay API surface."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Docs"
+    },
+    {
+      "name": "Health"
+    },
+    {
+      "name": "Auth"
+    },
+    {
+      "name": "Player"
+    }
+  ],
+  "paths": {
+    "/openapi.json": {
+      "get": {
+        "tags": ["Docs"],
+        "operationId": "getOpenApiDocument",
+        "summary": "Get the generated OpenAPI document",
+        "responses": {
+          "200": {
+            "description": "OpenAPI document",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OpenApiDocument"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": ["Health"],
+        "operationId": "getHealth",
+        "summary": "Get service health",
+        "responses": {
+          "200": {
+            "description": "Health status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/auth/guest": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "createGuestSession",
+        "summary": "Create a guest account session",
+        "responses": {
+          "200": {
+            "description": "Guest session created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuestSessionResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "login",
+        "summary": "Authenticate a registered account",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login succeeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "refreshSession",
+        "summary": "Rotate refresh token and issue a new token pair",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Token pair refreshed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefreshResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "logoutSession",
+        "summary": "Logout the session referenced by the refresh token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Session revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmptySuccessResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/auth/logout-all": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "logoutAllSessions",
+        "summary": "Logout all sessions for the authenticated account",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All sessions revoked",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutAllResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/auth/request-password-reset": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "requestPasswordReset",
+        "summary": "Request a password reset token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestPasswordResetRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset token created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestPasswordResetResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "resetPassword",
+        "summary": "Reset a password with a reset token",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Password reset completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmptySuccessResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/auth/upgrade": {
+      "post": {
+        "tags": ["Auth"],
+        "operationId": "upgradeAccount",
+        "summary": "Upgrade the authenticated guest account",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpgradeAccountRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Guest account upgraded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpgradeAccountResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/state": {
+      "get": {
+        "tags": ["Player"],
+        "operationId": "getPlayerState",
+        "summary": "Get the current player state with idle progress applied",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player state loaded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerStateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/tick": {
+      "post": {
+        "tags": ["Player"],
+        "operationId": "tickPlayer",
+        "summary": "Apply idle progress only",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player state updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerStateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/upgrade": {
+      "post": {
+        "tags": ["Player"],
+        "operationId": "upgradePlayer",
+        "summary": "Apply idle progress and upgrade once",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player upgraded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerStateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    },
+    "/run": {
+      "post": {
+        "tags": ["Player"],
+        "operationId": "runPlayer",
+        "summary": "Execute a deterministic run and return summary, playback, rewards, and updated player state",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RunRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Run completed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunActionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedErrorResponse"
+          },
+          "500": {
+            "$ref": "#/components/responses/ErrorResponse"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "responses": {
+      "UnauthorizedErrorResponse": {
+        "description": "Authentication failed or bearer token is missing",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      },
+      "ErrorResponse": {
+        "description": "Standard API error response",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorEnvelope"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "OpenApiDocument": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "ErrorEnvelope": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "error"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": false
+          },
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "EmptySuccessData": {
+        "type": "object",
+        "additionalProperties": false
+      },
+      "EmptySuccessResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "data"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/EmptySuccessData"
+          }
+        }
+      },
+      "HealthStatus": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["status"],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ok"]
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "data"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/HealthStatus"
+          }
+        }
+      },
+      "GuestSession": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["accountId", "playerId", "accessToken", "refreshToken"],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "playerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        }
+      },
+      "GuestSessionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "data"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/GuestSession"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["username", "password"],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["accountId", "playerId", "accessToken", "refreshToken"],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "playerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "data"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/LoginResult"
+          }
+        }
+      },
+      "RefreshRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["refreshToken"],
+        "properties": {
+          "refreshToken": {
+            "type": "string"
+          }
+        }
+      },
+      "RefreshResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["accessToken", "refreshToken"],
+        "properties": {
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        }
+      },
+      "RefreshResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "data"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/RefreshResult"
+          }
+        }
+      },
+      "LogoutAllResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["revokedCount"],
+        "properties": {
+          "revokedCount": {
+            "type": "integer"
+          }
+        }
+      },
+      "LogoutAllResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "data"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/LogoutAllResult"
+          }
+        }
+      },
+      "RequestPasswordResetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["email"],
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "RequestPasswordResetResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token"],
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        }
+      },
+      "RequestPasswordResetResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "data"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/RequestPasswordResetResult"
+          }
+        }
+      },
+      "ResetPasswordRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token", "newPassword"],
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string"
+          }
+        }
+      },
+      "UpgradeAccountRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["username", "password", "email"],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "UpgradeAccountResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["accountId", "type", "username", "email", "playerId", "accessToken", "refreshToken"],
+        "properties": {
+          "accountId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["REGISTERED"]
+          },
+          "username": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "playerId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        }
+      },
+      "UpgradeAccountResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "data"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/UpgradeAccountResult"
+          }
+        }
+      },
+      "PlayerState": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "accountType",
+          "energy",
+          "maxEnergy",
+          "currency",
+          "progression",
+          "energyPerSecond",
+          "teamPower",
+          "lastUpdateTimestampMs",
+          "createdAt",
+          "updatedAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountType": {
+            "type": "string",
+            "enum": ["GUEST", "REGISTERED"]
+          },
+          "energy": {
+            "type": "string"
+          },
+          "maxEnergy": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "progression": {
+            "type": "string"
+          },
+          "energyPerSecond": {
+            "type": "string"
+          },
+          "teamPower": {
+            "type": "integer"
+          },
+          "lastUpdateTimestampMs": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PlayerStateResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "data"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/PlayerState"
+          }
+        }
+      },
+      "RunRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["power", "speed", "critChance"],
+        "properties": {
+          "power": {
+            "type": "string"
+          },
+          "speed": {
+            "type": "number"
+          },
+          "critChance": {
+            "type": "number"
+          },
+          "runDurationMs": {
+            "type": "number"
+          }
+        }
+      },
+      "RunSummaryTriggerEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "source", "timestampMs"],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          },
+          "timestampMs": {
+            "type": "integer"
+          },
+          "value": {
+            "type": "string"
+          },
+          "comboDelta": {
+            "type": "integer"
+          }
+        }
+      },
+      "PlaybackArena": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["width", "height", "zones"],
+        "properties": {
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "zones": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "PlaybackEntity": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "spawnX", "spawnY"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["BALL", "ENEMY"]
+          },
+          "spawnX": {
+            "type": "number"
+          },
+          "spawnY": {
+            "type": "number"
+          }
+        }
+      },
+      "PlaybackBallPathEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "timelineStartMs",
+          "timelineEndMs",
+          "entityId",
+          "fromX",
+          "fromY",
+          "toX",
+          "toY"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["BALL_PATH"]
+          },
+          "timelineStartMs": {
+            "type": "integer"
+          },
+          "timelineEndMs": {
+            "type": "integer"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "fromX": {
+            "type": "number"
+          },
+          "fromY": {
+            "type": "number"
+          },
+          "toX": {
+            "type": "number"
+          },
+          "toY": {
+            "type": "number"
+          }
+        }
+      },
+      "PlaybackCollisionEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "timelineTimestampMs",
+          "sourceEntityId",
+          "targetEntityId",
+          "collisionKind",
+          "x",
+          "y"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["COLLISION"]
+          },
+          "timelineTimestampMs": {
+            "type": "integer"
+          },
+          "sourceEntityId": {
+            "type": "string"
+          },
+          "targetEntityId": {
+            "type": "string"
+          },
+          "collisionKind": {
+            "type": "string",
+            "enum": ["BALL_ENEMY"]
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        }
+      },
+      "PlaybackDamageEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "timelineTimestampMs",
+          "sourceEntityId",
+          "targetEntityId",
+          "x",
+          "y",
+          "damage",
+          "comboAfter",
+          "isCrit"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["DAMAGE"]
+          },
+          "timelineTimestampMs": {
+            "type": "integer"
+          },
+          "sourceEntityId": {
+            "type": "string"
+          },
+          "targetEntityId": {
+            "type": "string"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "damage": {
+            "type": "string"
+          },
+          "comboAfter": {
+            "type": "integer"
+          },
+          "isCrit": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PlaybackTriggerEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "timelineTimestampMs", "triggerType", "sourceEntityId"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["TRIGGER"]
+          },
+          "timelineTimestampMs": {
+            "type": "integer"
+          },
+          "triggerType": {
+            "type": "string"
+          },
+          "sourceEntityId": {
+            "type": "string"
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "value": {
+            "type": "string"
+          },
+          "comboDelta": {
+            "type": "integer"
+          }
+        }
+      },
+      "PlaybackPhaseEvent": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "timelineTimestampMs", "phase"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["PHASE"]
+          },
+          "timelineTimestampMs": {
+            "type": "integer"
+          },
+          "phase": {
+            "type": "string",
+            "enum": ["RUN_START", "FINISH"]
+          }
+        }
+      },
+      "PlaybackEvent": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/PlaybackBallPathEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PlaybackCollisionEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PlaybackDamageEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PlaybackTriggerEvent"
+          },
+          {
+            "$ref": "#/components/schemas/PlaybackPhaseEvent"
+          }
+        ]
+      },
+      "RunPlayback": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["durationMs", "arena", "entities", "events"],
+        "properties": {
+          "durationMs": {
+            "type": "integer"
+          },
+          "arena": {
+            "$ref": "#/components/schemas/PlaybackArena"
+          },
+          "entities": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaybackEntity"
+            }
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlaybackEvent"
+            }
+          }
+        }
+      },
+      "RunResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["totalDamage", "comboCount", "triggers", "durationMs", "playback"],
+        "properties": {
+          "totalDamage": {
+            "type": "string"
+          },
+          "comboCount": {
+            "type": "integer"
+          },
+          "triggers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunSummaryTriggerEvent"
+            }
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "playback": {
+            "$ref": "#/components/schemas/RunPlayback"
+          }
+        }
+      },
+      "RewardResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["grantedResources", "bonusTriggers", "summary"],
+        "properties": {
+          "grantedResources": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "bonusTriggers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunSummaryTriggerEvent"
+            }
+          },
+          "summary": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "RunActionResult": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["player", "runResult", "rewardResult"],
+        "properties": {
+          "player": {
+            "$ref": "#/components/schemas/PlayerState"
+          },
+          "runResult": {
+            "$ref": "#/components/schemas/RunResult"
+          },
+          "rewardResult": {
+            "$ref": "#/components/schemas/RewardResult"
+          }
+        }
+      },
+      "RunActionResponse": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["success", "data"],
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "const": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/RunActionResult"
+          }
+        }
+      }
+    }
+  }
+}

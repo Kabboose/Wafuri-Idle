@@ -108,6 +108,36 @@ npm run dev --workspace client
 
 The frontend proxies REST calls to the backend on `http://localhost:3001`.
 
+## OpenAPI Foundation
+
+The repo now includes an initial generated OpenAPI contract at `openapi/openapi.json`.
+
+Source of truth:
+
+- `openapi/source.json`
+
+Current scope:
+
+- current auth endpoints
+- current player gameplay endpoints
+- standard success/error envelopes
+- current run playback contract
+
+Useful commands:
+
+```bash
+just openapi-generate
+just openapi-check
+```
+
+When the server is running, the same document is also available at:
+
+```text
+http://localhost:3001/openapi.json
+```
+
+This is intentionally a foundation only. The contract is generated and validated, but client type generation and deeper schema-first runtime integration are still future work.
+
 ## Testing
 
 - Server tests run against a dedicated test database when they touch persistence.

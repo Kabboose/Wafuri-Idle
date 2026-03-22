@@ -3,26 +3,22 @@ import { useCallback, useEffect, useState } from "react";
 import type { AuthState } from "./authState";
 import { createLoadingAuthState, hasEverAuthenticated, markAuthenticatedOnce } from "./authState";
 import { bootstrapAuth } from "./bootstrapAuth";
-import { apiPost, AuthError, publicApiPost } from "../api/client";
+import type {
+  GuestSession,
+  LoginResult,
+  UpgradeAccountResult
+} from "../generated/openapi-types";
+import { AuthError } from "../api/client";
+import {
+  createGuestSession as createGuestSessionRequest,
+  login as loginRequest,
+  logoutSession as logoutSessionRequest,
+  logoutAllSessions as logoutAllSessionsRequest,
+  upgradeAccount as upgradeAccountRequest
+} from "../generated/openapi-client";
 import { clearTokens, getRefreshToken, setTokens } from "./tokenStore";
 
-type AuthResponse = {
-  accountId: string;
-  playerId: string;
-  accessToken: string;
-  refreshToken: string;
-};
-
-type LoginRequest = {
-  username: string;
-  password: string;
-};
-
-type UpgradeAccountRequest = {
-  username: string;
-  password: string;
-  email: string;
-};
+type AuthResponse = GuestSession | LoginResult | UpgradeAccountResult;
 
 export type UseAuthResult = {
   authState: AuthState;
@@ -75,26 +71,26 @@ export function useAuth(): UseAuthResult {
 
   /** Creates an explicit guest session and transitions auth state to authenticated. */
   const createGuest = async (): Promise<void> => {
-    const authResponse = await publicApiPost<AuthResponse>("/auth/guest");
+    const authResponse = await createGuestSessionRequest();
     applyAuthenticatedState(authResponse);
   };
 
   /** Authenticates an existing account and transitions auth state to authenticated. */
   const login = async (username: string, password: string): Promise<void> => {
-    const authResponse = await publicApiPost<AuthResponse>("/auth/login", {
+    const authResponse = await loginRequest({
       username,
       password
-    } satisfies LoginRequest);
+    });
     applyAuthenticatedState(authResponse);
   };
 
   /** Upgrades the current guest account and transitions auth state to authenticated. */
   const upgradeAccount = async (username: string, password: string, email: string): Promise<void> => {
-    const authResponse = await apiPost<AuthResponse>("/auth/upgrade", {
+    const authResponse = await upgradeAccountRequest({
       username,
       password,
       email
-    } satisfies UpgradeAccountRequest);
+    });
     applyAuthenticatedState(authResponse);
   };
 
@@ -116,7 +112,7 @@ export function useAuth(): UseAuthResult {
 
     try {
       if (refreshToken) {
-        await publicApiPost("/auth/logout", {
+        await logoutSessionRequest({
           refreshToken
         });
       }
@@ -130,7 +126,7 @@ export function useAuth(): UseAuthResult {
   /** Logs out all sessions for the current account, then clears local auth state. */
   const logoutAll = async (): Promise<void> => {
     try {
-      await apiPost<{ revokedCount: number }>("/auth/logout-all");
+      await logoutAllSessionsRequest();
     } catch (error) {
       if (!(error instanceof AuthError)) {
         // Local sign-out still wins when the server-side revoke-all request fails.

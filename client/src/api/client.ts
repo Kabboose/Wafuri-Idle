@@ -116,3 +116,8 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
 export async function publicApiPost<T>(path: string, body?: unknown): Promise<T> {
   return publicApiRequest<T>(path, "POST", body);
 }
+
+/** Performs an unauthenticated GET request. */
+export async function publicApiGet<T>(path: string): Promise<T> {
+  return publicApiRequest<T>(path, "GET");
+}

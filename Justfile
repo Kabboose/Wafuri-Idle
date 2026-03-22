@@ -55,6 +55,12 @@ prisma-generate:
 prisma-migrate:
   {{nvm}} && npm run prisma:migrate -- --name auto
 
+openapi-generate:
+  {{nvm}} && npm run openapi:generate
+
+openapi-check:
+  {{nvm}} && npm run openapi:check
+
 build:
   {{nvm}} && npm run build
 
@@ -62,6 +68,7 @@ lint:
   {{nvm}} && npm run lint
 
 test: env infra-up wait-services
+  just openapi-check
   just lint
   {{nvm}} && npm run test --workspace server
   {{nvm}} && npm run build --workspace client
@@ -73,6 +80,7 @@ client-build:
   {{nvm}} && npm run build --workspace client
 
 server-test: env infra-up wait-services
+  just openapi-check
   {{nvm}} && npm run test --workspace server
 
 client-test:
