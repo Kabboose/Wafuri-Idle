@@ -1,5 +1,5 @@
 import { GAME_CONFIG } from "../config/index.js";
-import type { RunInput, RunResult, TriggerEvent } from "../utils/runTypes.js";
+import type { RunInput, RunResult, RunTriggerEvent } from "../utils/runTypes.js";
 
 const DEFAULT_RUN_DURATION_MS = GAME_CONFIG.run.defaultDurationMs;
 const BASE_CRIT_DAMAGE_MULTIPLIER = BigInt(GAME_CONFIG.run.baseCritDamageMultiplier);
@@ -47,7 +47,7 @@ export function simulateRun(input: RunInput): RunResult {
   const critChance = clampBps(input.combatStats.critChance);
   const hitCount = calculateHitCount(input.combatStats.speed, durationMs);
   const nextRandom = createSeededRng(input.seed);
-  const triggers: TriggerEvent[] = [];
+  const triggers: RunTriggerEvent[] = [];
   let totalDamage = 0n;
   let comboCount = 0;
 

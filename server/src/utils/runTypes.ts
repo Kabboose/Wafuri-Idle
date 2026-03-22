@@ -25,8 +25,8 @@ export interface RunInput {
   combatStats: PlayerCombatStats;
 }
 
-/** Structured event emitted during a run for later result and reward processing. */
-export interface TriggerEvent {
+/** Summary-level trigger emitted during a run for later reward processing or compact result display. */
+export interface RunTriggerEvent {
   type: string;
   source: string;
   timestampMs: number;
@@ -34,17 +34,96 @@ export interface TriggerEvent {
   comboDelta?: number;
 }
 
+/** Arena snapshot used to replay a simulated run in normalized space. */
+export interface ArenaSnapshot {
+  width: number;
+  height: number;
+  zones: Array<Record<string, never>>;
+}
+
+/** Entity participating in run playback with a deterministic normalized spawn position. */
+export interface PlaybackEntity {
+  id: string;
+  kind: "BALL" | "ENEMY";
+  spawnX: number;
+  spawnY: number;
+}
+
+/** Straight-line movement segment for the ball through normalized arena coordinates. */
+export interface BallPathEvent {
+  kind: "BALL_PATH";
+  timestampMs: number;
+  entityId: string;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+}
+
+/** Spatial collision between two playback entities. */
+export interface CollisionEvent {
+  kind: "COLLISION";
+  timestampMs: number;
+  sourceEntityId: string;
+  targetEntityId: string;
+  x: number;
+  y: number;
+}
+
+/** Damage application event with the resulting combo and damage payload. */
+export interface DamageEvent {
+  kind: "DAMAGE";
+  timestampMs: number;
+  sourceEntityId: string;
+  targetEntityId: string;
+  x: number;
+  y: number;
+  damage: BigIntString;
+  comboCount: number;
+}
+
+/** Extensible playback trigger hook for future effects layered onto the timeline. */
+export interface TriggerEvent {
+  kind: "TRIGGER";
+  timestampMs: number;
+  triggerType: string;
+  sourceEntityId: string;
+  x?: number;
+  y?: number;
+  value?: BigIntString;
+  comboDelta?: number;
+}
+
+/** High-level run playback marker used to segment the replay timeline. */
+export interface PhaseEvent {
+  kind: "PHASE";
+  timestampMs: number;
+  phase: "RUN_START" | "RUN_FINISH";
+}
+
+/** Ordered deterministic playback output derived from the server-side run simulation. */
+export interface RunPlayback {
+  durationMs: number;
+  arena: ArenaSnapshot;
+  entities: PlaybackEntity[];
+  events: PlaybackEvent[];
+}
+
+/** All playback timeline events supported by the current replay model. */
+export type PlaybackEvent = BallPathEvent | CollisionEvent | DamageEvent | TriggerEvent | PhaseEvent;
+
 /** Result of a deterministic run simulation. */
 export interface RunResult {
   totalDamage: BigIntString;
   comboCount: number;
-  triggers: TriggerEvent[];
+  triggers: RunTriggerEvent[];
   durationMs: number;
+  playback?: RunPlayback;
 }
 
 /** Reward output derived from a completed run result. */
 export interface RewardResult {
   grantedResources: Record<string, BigIntString>;
-  bonusTriggers: TriggerEvent[];
+  bonusTriggers: RunTriggerEvent[];
   summary: string[];
 }
