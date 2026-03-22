@@ -3,11 +3,9 @@ export type BigIntString = string;
 
 /** Combat-relevant player stats captured as plain input for a deterministic run simulation. */
 export interface PlayerCombatStats {
-  teamPower: number;
-  baseDamage: BigIntString;
-  attackIntervalMs: number;
-  critChanceBps: number;
-  critDamageMultiplierBps: number;
+  power: BigIntString;
+  speed: number;
+  critChance: number;
 }
 
 /** Plain input required to simulate a single deterministic run. */

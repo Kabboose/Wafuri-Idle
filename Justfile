@@ -61,7 +61,7 @@ build:
 lint:
   {{nvm}} && npm run lint
 
-test:
+test: env infra-up wait-services
   just lint
   {{nvm}} && npm run test --workspace server
   {{nvm}} && npm run build --workspace client
@@ -72,7 +72,7 @@ server-build:
 client-build:
   {{nvm}} && npm run build --workspace client
 
-server-test:
+server-test: env infra-up wait-services
   {{nvm}} && npm run test --workspace server
 
 client-test:
