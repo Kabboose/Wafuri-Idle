@@ -107,10 +107,10 @@ function clampNormalized(value: number): number {
 /** Returns the primary timeline timestamp used to order mixed playback event types. */
 function getPlaybackEventTime(event: PlaybackEvent): number {
   if (event.kind === "BALL_PATH") {
-    return event.tStart;
+    return event.timelineStartMs;
   }
 
-  return event.timestampMs;
+  return event.timelineTimestampMs;
 }
 
 /** Validates that a playback timeline is replay-safe and internally consistent. */
@@ -122,11 +122,11 @@ function validatePlayback(playback: RunPlayback): void {
     const eventTime = getPlaybackEventTime(event);
 
     if (event.kind === "BALL_PATH") {
-      if (event.tStart < 0 || event.tEnd < 0) {
+      if (event.timelineStartMs < 0 || event.timelineEndMs < 0) {
         throw new Error("Playback contains negative path timestamps");
       }
 
-      if (event.tEnd < event.tStart) {
+      if (event.timelineEndMs < event.timelineStartMs) {
         throw new Error("Playback contains inverted path timing");
       }
 
@@ -134,7 +134,7 @@ function validatePlayback(playback: RunPlayback): void {
         throw new Error("Playback references unknown path entity");
       }
     } else {
-      if (event.timestampMs < 0) {
+      if (event.timelineTimestampMs < 0) {
         throw new Error("Playback contains negative event timestamps");
       }
     }
@@ -190,8 +190,8 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
 
     const approachEvent: BallPathEvent = {
       kind: "BALL_PATH",
-      tStart: approachStart,
-      tEnd: approachEnd,
+      timelineStartMs: approachStart,
+      timelineEndMs: approachEnd,
       entityId: ballEntity.id,
       fromX: currentX,
       fromY: currentY,
@@ -200,7 +200,7 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
     };
     const collisionEvent: CollisionEvent = {
       kind: "COLLISION",
-      timestampMs: approachEnd,
+      timelineTimestampMs: approachEnd,
       sourceEntityId: ballEntity.id,
       targetEntityId: enemyEntity.id,
       collisionKind: "BALL_ENEMY",
@@ -209,7 +209,7 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
     };
     const damageEvent: DamageEvent = {
       kind: "DAMAGE",
-      timestampMs: approachEnd,
+      timelineTimestampMs: approachEnd,
       sourceEntityId: ballEntity.id,
       targetEntityId: enemyEntity.id,
       x: enemyEntity.spawnX,
@@ -221,7 +221,7 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
     const triggerEvents: TriggerEvent[] = [
       {
         kind: "TRIGGER",
-        timestampMs: approachEnd,
+        timelineTimestampMs: approachEnd,
         triggerType: "impact-burst",
         sourceEntityId: ballEntity.id,
         x: enemyEntity.spawnX,
@@ -233,7 +233,7 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
     if (hit.comboAfter % 5 === 0) {
       triggerEvents.push({
         kind: "TRIGGER",
-        timestampMs: approachEnd,
+        timelineTimestampMs: approachEnd,
         triggerType: "combo-milestone",
         sourceEntityId: ballEntity.id,
         x: enemyEntity.spawnX,
@@ -245,7 +245,7 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
     if (hit.comboAfter === hits.length) {
       triggerEvents.push({
         kind: "TRIGGER",
-        timestampMs: approachEnd,
+        timelineTimestampMs: approachEnd,
         triggerType: "enemy-defeated",
         sourceEntityId: enemyEntity.id,
         x: enemyEntity.spawnX,
@@ -258,8 +258,8 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
     if (reboundStart < reboundEnd) {
       events.push({
         kind: "BALL_PATH",
-        tStart: reboundStart,
-        tEnd: reboundEnd,
+        timelineStartMs: reboundStart,
+        timelineEndMs: reboundEnd,
         entityId: ballEntity.id,
         fromX: enemyEntity.spawnX,
         fromY: enemyEntity.spawnY,
@@ -282,18 +282,18 @@ function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]):
   const phaseEvents: PhaseEvent[] = [
     {
       kind: "PHASE",
-      timestampMs: 0,
+      timelineTimestampMs: 0,
       phase: "RUN_START"
     },
     {
       kind: "PHASE",
-      timestampMs: durationMs,
+      timelineTimestampMs: durationMs,
       phase: "FINISH"
     }
   ];
   const endBurstEvent: TriggerEvent = {
     kind: "TRIGGER",
-    timestampMs: durationMs,
+    timelineTimestampMs: durationMs,
     triggerType: "run-end-burst",
     sourceEntityId: "ball-1"
   };

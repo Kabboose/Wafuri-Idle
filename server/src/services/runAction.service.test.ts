@@ -57,7 +57,7 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
   assert.equal(result.runResult.playback.entities.filter((entity) => entity.kind === "ENEMY").length, 3);
   assert.deepEqual(result.runResult.playback.events[0], {
     kind: "PHASE",
-    timestampMs: 0,
+    timelineTimestampMs: 0,
     phase: "RUN_START"
   });
   const finishEventIndex = result.runResult.playback.events.findIndex(
@@ -66,7 +66,7 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
   assert.notEqual(finishEventIndex, -1);
   assert.deepEqual(result.runResult.playback.events[finishEventIndex], {
     kind: "PHASE",
-    timestampMs: 10_000,
+    timelineTimestampMs: 10_000,
     phase: "FINISH"
   });
   assert.equal(result.runResult.playback.events.filter((event) => event.kind === "BALL_PATH").length, 20);

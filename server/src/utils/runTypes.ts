@@ -52,8 +52,8 @@ export interface PlaybackEntity {
 /** Straight-line movement segment for the ball through normalized arena coordinates. */
 export interface BallPathEvent {
   kind: "BALL_PATH";
-  tStart: number;
-  tEnd: number;
+  timelineStartMs: number;
+  timelineEndMs: number;
   entityId: string;
   fromX: number;
   fromY: number;
@@ -64,7 +64,7 @@ export interface BallPathEvent {
 /** Spatial collision between two playback entities. */
 export interface CollisionEvent {
   kind: "COLLISION";
-  timestampMs: number;
+  timelineTimestampMs: number;
   sourceEntityId: string;
   targetEntityId: string;
   collisionKind: "BALL_ENEMY";
@@ -75,7 +75,7 @@ export interface CollisionEvent {
 /** Damage application event with the resulting combo and damage payload. */
 export interface DamageEvent {
   kind: "DAMAGE";
-  timestampMs: number;
+  timelineTimestampMs: number;
   sourceEntityId: string;
   targetEntityId: string;
   x: number;
@@ -88,7 +88,7 @@ export interface DamageEvent {
 /** Extensible playback trigger hook for future effects layered onto the timeline. */
 export interface TriggerEvent {
   kind: "TRIGGER";
-  timestampMs: number;
+  timelineTimestampMs: number;
   triggerType: string;
   sourceEntityId: string;
   x?: number;
@@ -100,7 +100,7 @@ export interface TriggerEvent {
 /** High-level run playback marker used to segment the replay timeline. */
 export interface PhaseEvent {
   kind: "PHASE";
-  timestampMs: number;
+  timelineTimestampMs: number;
   phase: "RUN_START" | "FINISH";
 }
 

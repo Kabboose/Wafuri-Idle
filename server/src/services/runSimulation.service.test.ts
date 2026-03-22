@@ -20,7 +20,7 @@ function createRunInput(overrides: Partial<RunInput> = {}): RunInput {
 }
 
 function getPlaybackEventTime(event: PlaybackEvent): number {
-  return event.kind === "BALL_PATH" ? event.tStart : event.timestampMs;
+  return event.kind === "BALL_PATH" ? event.timelineStartMs : event.timelineTimestampMs;
 }
 
 test("simulateRun is deterministic for the same input and seed", () => {
@@ -62,7 +62,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.equal(result.playback.events[0]?.kind, "PHASE");
   assert.deepEqual(result.playback.events[0], {
     kind: "PHASE",
-    timestampMs: 0,
+    timelineTimestampMs: 0,
     phase: "RUN_START"
   });
   const finishEventIndex = result.playback.events.findIndex(
@@ -71,7 +71,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.notEqual(finishEventIndex, -1);
   assert.deepEqual(result.playback.events[finishEventIndex], {
     kind: "PHASE",
-    timestampMs: 10_000,
+    timelineTimestampMs: 10_000,
     phase: "FINISH"
   });
 
@@ -83,7 +83,14 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.equal(collisionEvents.length, 10);
   assert.equal(damageEvents.length, 10);
   assert.equal(triggerEvents.length, 14);
-  assert.ok(ballPathEvents.every((event) => event.tStart >= 0 && event.tEnd <= 10_000 && event.tStart < event.tEnd));
+  assert.ok(
+    ballPathEvents.every(
+      (event) =>
+        event.timelineStartMs >= 0 &&
+        event.timelineEndMs <= 10_000 &&
+        event.timelineStartMs < event.timelineEndMs
+    )
+  );
   assert.ok(ballPathEvents.every((event) => event.fromX >= 0 && event.fromX <= 1));
   assert.ok(ballPathEvents.every((event) => event.fromY >= 0 && event.fromY <= 1));
   assert.ok(ballPathEvents.every((event) => event.toX >= 0 && event.toX <= 1));
@@ -91,7 +98,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.ok(collisionEvents.every((event) => event.x >= 0 && event.x <= 1));
   assert.ok(collisionEvents.every((event) => event.y >= 0 && event.y <= 1));
   assert.ok(collisionEvents.every((event) => event.collisionKind === "BALL_ENEMY"));
-  assert.ok(triggerEvents.every((event) => event.timestampMs >= 0 && event.timestampMs <= 10_000));
+  assert.ok(triggerEvents.every((event) => event.timelineTimestampMs >= 0 && event.timelineTimestampMs <= 10_000));
   assert.ok(new Set(collisionEvents.map((event) => event.targetEntityId)).size > 1);
   assert.ok(new Set(damageEvents.map((event) => event.targetEntityId)).size > 1);
 
@@ -105,12 +112,12 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.equal(runEndBurstEvents.length, 1);
 
   assert.deepEqual(
-    damageEvents.map((event) => event.timestampMs),
-    collisionEvents.map((event) => event.timestampMs)
+    damageEvents.map((event) => event.timelineTimestampMs),
+    collisionEvents.map((event) => event.timelineTimestampMs)
   );
   assert.deepEqual(
-    impactBurstEvents.map((event) => event.timestampMs),
-    collisionEvents.map((event) => event.timestampMs)
+    impactBurstEvents.map((event) => event.timelineTimestampMs),
+    collisionEvents.map((event) => event.timelineTimestampMs)
   );
   assert.deepEqual(
     damageEvents.map((event) => event.comboAfter),
@@ -127,8 +134,8 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     const previousEvent: PlaybackEvent | undefined = result.playback.events[collisionEventIndex - 1];
     assert.equal(previousEvent?.kind, "BALL_PATH");
     assert.equal(
-      previousEvent?.kind === "BALL_PATH" ? previousEvent.tEnd : undefined,
-      collisionEvents[index]?.timestampMs
+      previousEvent?.kind === "BALL_PATH" ? previousEvent.timelineEndMs : undefined,
+      collisionEvents[index]?.timelineTimestampMs
     );
     assert.equal(result.playback.events[collisionEventIndex + 1]?.kind, "DAMAGE");
     assert.equal(result.playback.events[collisionEventIndex + 2]?.kind, "TRIGGER");

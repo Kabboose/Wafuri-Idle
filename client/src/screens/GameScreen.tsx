@@ -33,8 +33,8 @@ type RunResult = {
     events: Array<
       | {
           kind: "BALL_PATH";
-          tStart: number;
-          tEnd: number;
+          timelineStartMs: number;
+          timelineEndMs: number;
           entityId: string;
           fromX: number;
           fromY: number;
@@ -43,7 +43,7 @@ type RunResult = {
         }
       | {
           kind: "COLLISION";
-          timestampMs: number;
+          timelineTimestampMs: number;
           sourceEntityId: string;
           targetEntityId: string;
           collisionKind: "BALL_ENEMY";
@@ -52,7 +52,7 @@ type RunResult = {
         }
       | {
           kind: "DAMAGE";
-          timestampMs: number;
+          timelineTimestampMs: number;
           sourceEntityId: string;
           targetEntityId: string;
           x: number;
@@ -63,7 +63,7 @@ type RunResult = {
         }
       | {
           kind: "TRIGGER";
-          timestampMs: number;
+          timelineTimestampMs: number;
           triggerType: string;
           sourceEntityId: string;
           x?: number;
@@ -73,7 +73,7 @@ type RunResult = {
         }
       | {
           kind: "PHASE";
-          timestampMs: number;
+          timelineTimestampMs: number;
           phase: "RUN_START" | "FINISH";
         }
     >;
