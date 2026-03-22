@@ -88,6 +88,59 @@ function clampNormalized(value: number): number {
   return Math.min(Math.max(value, 0), 1);
 }
 
+/** Returns the primary timeline timestamp used to order mixed playback event types. */
+function getPlaybackEventTime(event: PlaybackEvent): number {
+  if (event.kind === "BALL_PATH") {
+    return event.tStart;
+  }
+
+  return event.timestampMs;
+}
+
+/** Validates that a playback timeline is replay-safe and internally consistent. */
+function validatePlayback(playback: RunPlayback): void {
+  const entityIds = new Set(playback.entities.map((entity) => entity.id));
+  let previousEventTime = -1;
+
+  for (const event of playback.events) {
+    const eventTime = getPlaybackEventTime(event);
+
+    if (event.kind === "BALL_PATH") {
+      if (event.tStart < 0 || event.tEnd < 0) {
+        throw new Error("Playback contains negative path timestamps");
+      }
+
+      if (event.tEnd < event.tStart) {
+        throw new Error("Playback contains inverted path timing");
+      }
+
+      if (!entityIds.has(event.entityId)) {
+        throw new Error("Playback references unknown path entity");
+      }
+    } else {
+      if (event.timestampMs < 0) {
+        throw new Error("Playback contains negative event timestamps");
+      }
+    }
+
+    if (eventTime < previousEventTime) {
+      throw new Error("Playback events are out of order");
+    }
+
+    if (event.kind === "COLLISION" || event.kind === "DAMAGE") {
+      if (!entityIds.has(event.sourceEntityId) || !entityIds.has(event.targetEntityId)) {
+        throw new Error("Playback references unknown collision or damage entity");
+      }
+    }
+
+    if (event.kind === "TRIGGER" && !entityIds.has(event.sourceEntityId)) {
+      throw new Error("Playback references unknown trigger entity");
+    }
+
+    previousEventTime = eventTime;
+  }
+}
+
 /** Builds simple deterministic straight-line ball path, collision, and damage events in normalized space. */
 function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hits: SimulatedHit[]): PlaybackEvent[] {
   const ballEntity = entities.find((entity) => entity.kind === "BALL");
@@ -188,7 +241,7 @@ function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]):
     }
   ];
 
-  return {
+  const playback: RunPlayback = {
     durationMs,
     arena: {
       width: 1,
@@ -198,6 +251,10 @@ function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]):
     entities,
     events: [phaseEvents[0], ...motionEvents, phaseEvents[1]]
   };
+
+  validatePlayback(playback);
+
+  return playback;
 }
 
 /** Simulates a deterministic fixed-duration run and returns aggregate combat output only. */

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { simulateRun } from "./runSimulation.service.js";
-import type { RunInput } from "../utils/runTypes.js";
+import type { PlaybackEvent, RunInput } from "../utils/runTypes.js";
 
 function createRunInput(overrides: Partial<RunInput> = {}): RunInput {
   return {
@@ -17,6 +17,10 @@ function createRunInput(overrides: Partial<RunInput> = {}): RunInput {
     },
     ...overrides
   };
+}
+
+function getPlaybackEventTime(event: PlaybackEvent): number {
+  return event.kind === "BALL_PATH" ? event.tStart : event.timestampMs;
 }
 
 test("simulateRun is deterministic for the same input and seed", () => {
@@ -107,6 +111,30 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     const collisionEventIndex: number = result.playback?.events.findIndex((event) => event === collisionEvents[index]) ?? -1;
     assert.notEqual(collisionEventIndex, -1);
     assert.equal(result.playback?.events[collisionEventIndex + 1]?.kind, "DAMAGE");
+  }
+
+  const entityIds = new Set(result.playback?.entities.map((entity) => entity.id) ?? []);
+  let previousEventTime = -1;
+
+  for (const event of result.playback?.events ?? []) {
+    const eventTime = getPlaybackEventTime(event);
+    assert.ok(eventTime >= 0);
+    assert.ok(eventTime >= previousEventTime);
+
+    if (event.kind === "BALL_PATH") {
+      assert.ok(entityIds.has(event.entityId));
+    }
+
+    if (event.kind === "COLLISION" || event.kind === "DAMAGE") {
+      assert.ok(entityIds.has(event.sourceEntityId));
+      assert.ok(entityIds.has(event.targetEntityId));
+    }
+
+    if (event.kind === "TRIGGER") {
+      assert.ok(entityIds.has(event.sourceEntityId));
+    }
+
+    previousEventTime = eventTime;
   }
 });
 
