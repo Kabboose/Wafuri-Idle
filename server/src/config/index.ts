@@ -25,7 +25,15 @@ export const GAME_CONFIG = {
     maxOfflineProgressMs: 1000 * 60 * 60 * 24
   },
   run: {
-    runEnergyCost: "10000000"
+    runEnergyCost: "10000000",
+    defaultDurationMs: 10_000,
+    baseCritDamageMultiplier: "2",
+    baseCritChanceScale: 10_000,
+    speedScale: 1_000
+  },
+  rewards: {
+    currencyPerDamage: "1",
+    progressionPerCombo: "1000000"
   },
   player: {
     startingEnergy: "0",

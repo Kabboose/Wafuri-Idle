@@ -1,9 +1,10 @@
+import { GAME_CONFIG } from "../config/index.js";
 import type { RunInput, RunResult, TriggerEvent } from "../utils/runTypes.js";
 
-const DEFAULT_RUN_DURATION_MS = 10_000;
-const CRIT_MULTIPLIER = 2n;
-const CRIT_CHANCE_SCALE = 10_000;
-const SPEED_SCALE = 1_000;
+const DEFAULT_RUN_DURATION_MS = GAME_CONFIG.run.defaultDurationMs;
+const BASE_CRIT_DAMAGE_MULTIPLIER = BigInt(GAME_CONFIG.run.baseCritDamageMultiplier);
+const BASE_CRIT_CHANCE_SCALE = GAME_CONFIG.run.baseCritChanceScale;
+const SPEED_SCALE = GAME_CONFIG.run.speedScale;
 
 /** Hashes the provided seed string into a deterministic 32-bit unsigned integer. */
 function hashSeed(seed: string): number {
@@ -29,7 +30,7 @@ function createSeededRng(seed: string): () => number {
 
 /** Clamps percentage-like basis-point values into a deterministic supported range. */
 function clampBps(value: number): number {
-  return Math.min(Math.max(Math.floor(value), 0), CRIT_CHANCE_SCALE);
+  return Math.min(Math.max(Math.floor(value), 0), BASE_CRIT_CHANCE_SCALE);
 }
 
 /** Converts the provided speed stat into a deterministic hit count over the run duration. */
@@ -51,8 +52,8 @@ export function simulateRun(input: RunInput): RunResult {
   let comboCount = 0;
 
   for (let hitIndex = 0; hitIndex < hitCount; hitIndex += 1) {
-    const isCriticalHit = nextRandom() < critChance / CRIT_CHANCE_SCALE;
-    const hitDamage = isCriticalHit ? power * CRIT_MULTIPLIER : power;
+    const isCriticalHit = nextRandom() < critChance / BASE_CRIT_CHANCE_SCALE;
+    const hitDamage = isCriticalHit ? power * BASE_CRIT_DAMAGE_MULTIPLIER : power;
     const timestampMs = input.nowMs + Math.floor(((hitIndex + 1) * durationMs) / Math.max(hitCount, 1));
 
     totalDamage += hitDamage;
