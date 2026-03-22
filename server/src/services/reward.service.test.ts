@@ -2,7 +2,18 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { calculateRewards } from "./reward.service.js";
-import type { RunResult } from "../utils/runTypes.js";
+import type { RunPlayback, RunResult } from "../utils/runTypes.js";
+
+const playbackFixture: RunPlayback = {
+  durationMs: 10_000,
+  arena: {
+    width: 1,
+    height: 1,
+    zones: []
+  },
+  entities: [],
+  events: []
+};
 
 function createRunResult(overrides: Partial<RunResult> = {}): RunResult {
   return {
@@ -10,6 +21,7 @@ function createRunResult(overrides: Partial<RunResult> = {}): RunResult {
     comboCount: 4,
     triggers: [],
     durationMs: 10_000,
+    playback: playbackFixture,
     ...overrides
   };
 }

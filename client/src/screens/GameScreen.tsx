@@ -17,6 +17,67 @@ type RunResult = {
     comboDelta?: number;
   }>;
   durationMs: number;
+  playback: {
+    durationMs: number;
+    arena: {
+      width: number;
+      height: number;
+      zones: Array<Record<string, never>>;
+    };
+    entities: Array<{
+      id: string;
+      kind: "BALL" | "ENEMY";
+      spawnX: number;
+      spawnY: number;
+    }>;
+    events: Array<
+      | {
+          kind: "BALL_PATH";
+          tStart: number;
+          tEnd: number;
+          entityId: string;
+          fromX: number;
+          fromY: number;
+          toX: number;
+          toY: number;
+        }
+      | {
+          kind: "COLLISION";
+          timestampMs: number;
+          sourceEntityId: string;
+          targetEntityId: string;
+          collisionKind: "BALL_ENEMY";
+          x: number;
+          y: number;
+        }
+      | {
+          kind: "DAMAGE";
+          timestampMs: number;
+          sourceEntityId: string;
+          targetEntityId: string;
+          x: number;
+          y: number;
+          damage: string;
+          comboAfter: number;
+          isCrit: boolean;
+        }
+      | {
+          kind: "TRIGGER";
+          timestampMs: number;
+          triggerType: string;
+          sourceEntityId: string;
+          x?: number;
+          y?: number;
+          value?: string;
+          comboDelta?: number;
+        }
+      | {
+          kind: "PHASE";
+          timestampMs: number;
+          phase: "RUN_START" | "FINISH";
+        }
+    >;
+  };
 };
 
 type RewardResult = {

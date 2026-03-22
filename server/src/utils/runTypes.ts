@@ -121,7 +121,7 @@ export interface RunResult {
   comboCount: number;
   triggers: RunTriggerEvent[];
   durationMs: number;
-  playback?: RunPlayback;
+  playback: RunPlayback;
 }
 
 /** Reward output derived from a completed run result. */

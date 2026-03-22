@@ -67,6 +67,26 @@ function normalizePosition(nextRandom: () => number, min: number, max: number): 
 /** Builds the deterministic entity layout for the run playback snapshot. */
 function createPlaybackEntities(seed: string): PlaybackEntity[] {
   const nextRandom = createSeededRng(`${seed}:playback-layout`);
+  const enemies: PlaybackEntity[] = [
+    {
+      id: "enemy-1",
+      kind: "ENEMY",
+      spawnX: normalizePosition(nextRandom, 0.18, 0.35),
+      spawnY: normalizePosition(nextRandom, 0.58, 0.72)
+    },
+    {
+      id: "enemy-2",
+      kind: "ENEMY",
+      spawnX: normalizePosition(nextRandom, 0.42, 0.58),
+      spawnY: normalizePosition(nextRandom, 0.62, 0.8)
+    },
+    {
+      id: "enemy-3",
+      kind: "ENEMY",
+      spawnX: normalizePosition(nextRandom, 0.65, 0.82),
+      spawnY: normalizePosition(nextRandom, 0.56, 0.74)
+    }
+  ];
 
   return [
     {
@@ -75,12 +95,7 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
       spawnX: 0.5,
       spawnY: 0.15
     },
-    {
-      id: "enemy-1",
-      kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.2, 0.8),
-      spawnY: normalizePosition(nextRandom, 0.55, 0.85)
-    }
+    ...enemies
   ];
 }
 
@@ -145,9 +160,9 @@ function validatePlayback(playback: RunPlayback): void {
 /** Builds simple deterministic straight-line ball path, collision, and damage events in normalized space. */
 function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hits: SimulatedHit[]): PlaybackEvent[] {
   const ballEntity = entities.find((entity) => entity.kind === "BALL");
-  const enemyEntity = entities.find((entity) => entity.kind === "ENEMY");
+  const enemyEntities = entities.filter((entity) => entity.kind === "ENEMY");
 
-  if (!ballEntity || !enemyEntity || durationMs <= 0 || hits.length === 0) {
+  if (!ballEntity || enemyEntities.length === 0 || durationMs <= 0 || hits.length === 0) {
     return [];
   }
 
@@ -160,6 +175,7 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
 
   for (let hitIndex = 0; hitIndex < hits.length; hitIndex += 1) {
     const hit = hits[hitIndex];
+    const enemyEntity = enemyEntities[hitIndex % enemyEntities.length];
     const approachStart = hitIndex * 2 * segmentDurationMs;
     const approachEnd = hitIndex === motionHitCount - 1
       ? Math.min(approachStart + segmentDurationMs, durationMs)
