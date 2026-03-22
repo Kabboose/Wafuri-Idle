@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { progressPlayer } from "./idle.service.js";
+import { applyIdleEnergy } from "./idle.service.js";
 import type { PlayerState } from "../utils/playerTypes.js";
 
 function createPlayerState(overrides: Partial<PlayerState> = {}): PlayerState {
@@ -19,28 +19,28 @@ function createPlayerState(overrides: Partial<PlayerState> = {}): PlayerState {
   };
 }
 
-test("progressPlayer caps energy at maxEnergy", () => {
+test("applyIdleEnergy caps energy at maxEnergy", () => {
   const player = createPlayerState({
     energy: 9500000n,
     maxEnergy: 10000000n,
     lastUpdateTimestampMs: 0
   });
 
-  const progressed = progressPlayer(player, 1000);
+  const progressed = applyIdleEnergy(player, 1000);
 
   assert.equal(progressed.energy, 10000000n);
   assert.equal(progressed.maxEnergy, 10000000n);
 });
 
-test("progressPlayer stays at maxEnergy on repeated idle application", () => {
+test("applyIdleEnergy stays at maxEnergy on repeated idle application", () => {
   const player = createPlayerState({
     energy: 10000000n,
     maxEnergy: 10000000n,
     lastUpdateTimestampMs: 0
   });
 
-  const firstProgress = progressPlayer(player, 1000);
-  const secondProgress = progressPlayer(
+  const firstProgress = applyIdleEnergy(player, 1000);
+  const secondProgress = applyIdleEnergy(
     {
       ...player,
       ...firstProgress,

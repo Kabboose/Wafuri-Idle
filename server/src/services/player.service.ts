@@ -1,7 +1,7 @@
 import { getPlayerById, updatePlayerOptimistically } from "../db/playerRepository.js";
 import { findAccountById } from "../db/accountRepo.js";
 import { getCachedPlayerState, setCachedPlayerState } from "./cacheService.js";
-import { progressPlayer, upgradePlayer as applyPlayerUpgrade } from "./idle.service.js";
+import { applyIdleEnergy, upgradePlayer as applyPlayerUpgrade } from "./idle.service.js";
 import { stringifyFixed } from "../utils/fixedPoint.js";
 import type { PlayerState, SerializedPlayerState } from "../utils/playerTypes.js";
 
@@ -45,7 +45,7 @@ export async function getPlayerState(accountId: string, playerId: string, now: n
 
   // The repository handles optimistic retries if the cached snapshot is stale.
   const player = await updatePlayerOptimistically(playerId, cachedPlayer, (currentPlayer) =>
-    progressPlayer(currentPlayer, now)
+    applyIdleEnergy(currentPlayer, now)
   );
   const serialized = serializePlayer(player, await getAccountType(accountId));
 
@@ -65,7 +65,7 @@ export async function upgradePlayer(
 ): Promise<SerializedPlayerState> {
   const cachedPlayer = await getCachedPlayerState(playerId);
   const player = await updatePlayerOptimistically(playerId, cachedPlayer, (currentPlayer) => {
-    const progressedPlayer = progressPlayer(currentPlayer, now);
+    const progressedPlayer = applyIdleEnergy(currentPlayer, now);
 
     return applyPlayerUpgrade(progressedPlayer);
   });

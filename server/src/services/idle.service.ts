@@ -13,21 +13,21 @@ function clampEnergyToMax(energy: bigint, maxEnergy: bigint): bigint {
 }
 
 /** Advances a player forward in time, capped by the configured offline progress limit. */
-export function progressPlayer(player: PlayerState, now: number): PlayerMutation {
+export function applyIdleEnergy(playerState: PlayerState, nowMs: number): PlayerMutation {
   const elapsedMs = Math.min(
-    Math.max(now - player.lastUpdateTimestampMs, 0),
+    Math.max(nowMs - playerState.lastUpdateTimestampMs, 0),
     GAME_CONFIG.idle.maxOfflineProgressMs
   );
 
   return {
     energy: clampEnergyToMax(
-      player.energy + calculateEnergyGain(elapsedMs, player.energyPerSecond, player.teamPower),
-      player.maxEnergy
+      playerState.energy + calculateEnergyGain(elapsedMs, playerState.energyPerSecond, playerState.teamPower),
+      playerState.maxEnergy
     ),
-    maxEnergy: player.maxEnergy,
-    energyPerSecond: player.energyPerSecond,
-    teamPower: player.teamPower,
-    lastUpdateTimestampMs: now
+    maxEnergy: playerState.maxEnergy,
+    energyPerSecond: playerState.energyPerSecond,
+    teamPower: playerState.teamPower,
+    lastUpdateTimestampMs: nowMs
   };
 }
 
