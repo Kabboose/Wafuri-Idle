@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 
 import { AuthError } from "../api/client";
 import type { PlayerState } from "../auth/bootstrapAuth";
+import { RunReplay } from "../components/RunReplay";
 import { UpgradeModal } from "../components/UpgradeModal";
 import { GAMEPLAY_CONFIG } from "../config/gameplay";
 import { runPlayer, upgradePlayer } from "../generated/openapi-client";
@@ -60,6 +61,7 @@ export function GameScreen({
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
   const [latestRunResult, setLatestRunResult] = useState<RunResult | null>(null);
   const [latestRewardResult, setLatestRewardResult] = useState<RewardResult | null>(null);
+  const [replayVersion, setReplayVersion] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -144,6 +146,7 @@ export function GameScreen({
       setPlayerState(runActionResult.player);
       setLatestRunResult(runActionResult.runResult);
       setLatestRewardResult(runActionResult.rewardResult);
+      setReplayVersion((currentVersion) => currentVersion + 1);
       setError(null);
     } catch (requestError) {
       if (requestError instanceof AuthError) {
@@ -187,14 +190,6 @@ export function GameScreen({
       <p>Progression: {formatFixed(playerState.progression)}</p>
       <p>Energy per second: {formatFixed(playerState.energyPerSecond)} / sec</p>
       <p>Team power: {playerState.teamPower}</p>
-      {latestRunResult ? (
-        <>
-          <p>Last run damage: {latestRunResult.totalDamage}</p>
-          <p>Last run combo: {latestRunResult.comboCount}</p>
-          <p>Last run currency: {formatFixed(latestRewardResult?.grantedResources.currency ?? "0")}</p>
-          <p>Last run progression: {formatFixed(latestRewardResult?.grantedResources.progression ?? "0")}</p>
-        </>
-      ) : null}
       <div className="button-row">
         {playerState.accountType === "GUEST" ? (
           <button type="button" className="secondary-button" onClick={() => setIsUpgradeOpen(true)}>
@@ -208,6 +203,13 @@ export function GameScreen({
           Upgrade Team
         </button>
       </div>
+      {latestRunResult ? (
+        <RunReplay
+          key={replayVersion}
+          runResult={latestRunResult}
+          rewardResult={latestRewardResult}
+        />
+      ) : null}
       {isUpgradeOpen ? (
         <UpgradeModal
           upgradeAccount={upgradeAccount}
