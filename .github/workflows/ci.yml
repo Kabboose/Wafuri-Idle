@@ -37,6 +37,7 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/wafuri_idle?schema=public
+      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/wafuri_idle_test?schema=public
       REDIS_URL: redis://127.0.0.1:6379
       PORT: 3001
       JWT_SECRET: ci-test-secret
@@ -58,9 +59,6 @@ jobs:
 
       - name: Generate Prisma client
         run: npm run prisma:generate --workspace server
-
-      - name: Apply Prisma migration
-        run: npm run prisma:migrate --workspace server -- --name auto
 
       - name: Lint
         run: npm run lint

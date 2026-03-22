@@ -47,6 +47,7 @@ cp server/.env.example server/.env
 Required variables:
 
 - `DATABASE_URL`
+- `DATABASE_URL_TEST`
 - `REDIS_URL`
 - `PORT`
 - `JWT_SECRET`
@@ -87,6 +88,13 @@ npm run dev --workspace client
 
 The frontend proxies REST calls to the backend on `http://localhost:3001`.
 
+## Testing
+
+- Server integration tests run against a dedicated test database.
+- By default, the test runner derives that database from `DATABASE_URL` by appending `_test`, or uses `DATABASE_URL_TEST` when provided explicitly.
+- The dedicated test database is migrated before the suite and wiped after the suite completes.
+- The normal development database is not used by `npm run test --workspace server`.
+
 ## Current Auth Flow
 
 - First visit: the app shows an entry screen instead of auto-creating a guest account
@@ -114,6 +122,7 @@ Available recipes:
 - `prisma-migrate`: run the local Prisma migration with an automatic dev migration name
 - `setup`: create env file, start infra, wait for readiness, install dependencies, generate Prisma client, and run migrations automatically
 - `build`: build both server and client
+- `test`: run lint, server tests, and the client build
 - `server`: run the backend dev server
 - `client`: run the frontend dev server
 - `run`: do the full local startup flow, then run server and client together

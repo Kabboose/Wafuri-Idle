@@ -248,19 +248,21 @@ Rules:
 
 Do not log sensitive secrets or raw JWTs.
 
+## Testing Rules
+
+- Tests must be safe to run in parallel by default.
+- Do not rely on global table wipes, shared mutable fixtures, or serialized execution to make tests pass.
+- Integration tests must use a dedicated test database, not the normal development database.
+- The dedicated test database may be prepared before the suite and wiped after the suite completes.
+- Test data should be isolated per test, typically through unique identifiers or per-test setup scoped to that test only.
+- If a test genuinely cannot run in parallel, that constraint must be explicit and narrowly scoped.
+
 ## Commenting and Documentation
 
 - All functions should have docstrings.
 - Add inline comments only for non-obvious behavior.
 - Prefer concise explanations over noisy commentary.
 - Preserve the existing standard when adding new code.
-
-## Testing Rules
-
-- Tests must be safe to run in parallel by default.
-- Do not rely on global table wipes, shared mutable fixtures, or serialized execution to make tests pass.
-- Test data should be isolated per test, typically through unique identifiers or per-test setup scoped to that test only.
-- If a test genuinely cannot run in parallel, that constraint must be explicit and narrowly scoped.
 
 ## Frontend Rules
 
@@ -293,15 +295,6 @@ The backend is stateless for request handling across requests.
 Rules:
 
 - Do not keep authoritative player state in process memory as a source of truth.
-- Session persistence exists only for authentication lifecycle management.
-
-## Statelessness
-
-The backend is stateless for request handling.
-
-Rules:
-
-- Do not keep authoritative player state in process memory across requests.
 - Session persistence exists only for authentication lifecycle management.
 
 ## Migration Discipline

@@ -12,7 +12,7 @@ import { logoutAllSessions } from "./logoutAllSessions.js";
 import { logoutSession } from "./logoutSession.js";
 import { hashRefreshToken } from "./sessionTokens.js";
 
-const integrationTest = process.env.DATABASE_URL ? test : test.skip;
+const integrationTest = process.env.DATABASE_URL_TEST || process.env.DATABASE_URL ? test : test.skip;
 
 after(async () => {
   await prisma.$disconnect();

@@ -20,7 +20,7 @@ import { requestPasswordReset } from "./requestPasswordReset.js";
 import { resetPassword } from "./resetPassword.js";
 import { upgradeAccount } from "./upgradeAccount.js";
 
-const integrationTest = process.env.DATABASE_URL ? test : test.skip;
+const integrationTest = process.env.DATABASE_URL_TEST || process.env.DATABASE_URL ? test : test.skip;
 
 function createMockResponse() {
   return {
