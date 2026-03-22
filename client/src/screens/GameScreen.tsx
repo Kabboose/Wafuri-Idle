@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { apiPost, AuthError } from "../api/client";
 import type { PlayerState } from "../auth/bootstrapAuth";
 import { UpgradeModal } from "../components/UpgradeModal";
+import { GAMEPLAY_CONFIG } from "../config/gameplay";
 import { loadPlayer } from "../game/loadPlayer";
 
 type RunResult = {
@@ -70,10 +71,10 @@ function buildRunRequest(playerState: PlayerState): {
   runDurationMs: number;
 } {
   return {
-    power: (BigInt(playerState.teamPower) * 1000n).toString(),
-    speed: 1,
-    critChance: 2500,
-    runDurationMs: 10_000
+    power: (BigInt(playerState.teamPower) * GAMEPLAY_CONFIG.run.powerScalePerTeamPower).toString(),
+    speed: GAMEPLAY_CONFIG.run.defaultSpeed,
+    critChance: GAMEPLAY_CONFIG.run.defaultCritChance,
+    runDurationMs: GAMEPLAY_CONFIG.run.defaultDurationMs
   };
 }
 
