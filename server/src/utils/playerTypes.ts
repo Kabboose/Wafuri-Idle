@@ -1,8 +1,8 @@
 export type SerializedPlayerState = {
   id: string;
   accountType: "GUEST" | "REGISTERED";
-  mana: string;
-  manaGenerationRate: string;
+  energy: string;
+  energyPerSecond: string;
   teamPower: number;
   lastUpdateTimestampMs: number;
   createdAt: string;
@@ -11,8 +11,8 @@ export type SerializedPlayerState = {
 
 export type PlayerState = {
   id: string;
-  mana: bigint;
-  manaGenerationRate: bigint;
+  energy: bigint;
+  energyPerSecond: bigint;
   teamPower: number;
   version: number;
   lastUpdateTimestampMs: number;
@@ -21,8 +21,8 @@ export type PlayerState = {
 };
 
 export type PlayerMutation = {
-  mana: bigint;
-  manaGenerationRate: bigint;
+  energy: bigint;
+  energyPerSecond: bigint;
   teamPower: number;
   lastUpdateTimestampMs: number;
 };

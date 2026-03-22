@@ -92,8 +92,8 @@ export type AccountScalarFieldEnum = (typeof AccountScalarFieldEnum)[keyof typeo
 export const PlayerScalarFieldEnum = {
   id: 'id',
   accountId: 'accountId',
-  mana: 'mana',
-  manaGenerationRate: 'manaGenerationRate',
+  energy: 'energy',
+  energyPerSecond: 'energyPerSecond',
   teamPower: 'teamPower',
   version: 'version',
   lastUpdateTimestampMs: 'lastUpdateTimestampMs',

@@ -1,10 +1,10 @@
 import { GAME_CONFIG } from "../config/index.js";
 import type { PlayerMutation, PlayerState } from "../utils/playerTypes.js";
-import { calculateManaGain, getEffectiveRate, RATE_UPGRADE_INCREMENT } from "../utils/fixedPoint.js";
+import { calculateEnergyGain, getEffectiveRate, RATE_UPGRADE_INCREMENT } from "../utils/fixedPoint.js";
 
-/** Returns the effective mana generation rate after applying team power scaling. */
-export function getEffectiveManaRate(player: Pick<PlayerState, "manaGenerationRate" | "teamPower">): bigint {
-  return getEffectiveRate(player.manaGenerationRate, player.teamPower);
+/** Returns the effective energy generation rate after applying team power scaling. */
+export function getEffectiveEnergyRate(player: Pick<PlayerState, "energyPerSecond" | "teamPower">): bigint {
+  return getEffectiveRate(player.energyPerSecond, player.teamPower);
 }
 
 /** Advances a player forward in time, capped by the configured offline progress limit. */
@@ -15,8 +15,8 @@ export function progressPlayer(player: PlayerState, now: number): PlayerMutation
   );
 
   return {
-    mana: player.mana + calculateManaGain(elapsedMs, player.manaGenerationRate, player.teamPower),
-    manaGenerationRate: player.manaGenerationRate,
+    energy: player.energy + calculateEnergyGain(elapsedMs, player.energyPerSecond, player.teamPower),
+    energyPerSecond: player.energyPerSecond,
     teamPower: player.teamPower,
     lastUpdateTimestampMs: now
   };
@@ -26,7 +26,7 @@ export function progressPlayer(player: PlayerState, now: number): PlayerMutation
 export function upgradePlayer(player: PlayerMutation): PlayerMutation {
   return {
     ...player,
-    manaGenerationRate: player.manaGenerationRate + RATE_UPGRADE_INCREMENT,
+    energyPerSecond: player.energyPerSecond + RATE_UPGRADE_INCREMENT,
     teamPower: player.teamPower + GAME_CONFIG.upgrade.teamPowerGain
   };
 }

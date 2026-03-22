@@ -5,8 +5,8 @@ import { refreshAccessToken } from "./refreshAccessToken";
 export type PlayerState = {
   id: string;
   accountType: "GUEST" | "REGISTERED";
-  mana: string;
-  manaGenerationRate: string;
+  energy: string;
+  energyPerSecond: string;
   teamPower: number;
   lastUpdateTimestampMs: number;
 };

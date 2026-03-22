@@ -14,7 +14,7 @@ export const GAME_CONFIG = {
   upgrade: {
     baseCost: 10,
     scaling: 1.15,
-    manaGenerationRateIncrement: "500000",
+    energyPerSecondIncrement: "500000",
     teamPowerGain: 1
   },
   idle: {
@@ -25,7 +25,7 @@ export const GAME_CONFIG = {
     maxOfflineProgressMs: 1000 * 60 * 60 * 24
   },
   player: {
-    startingMana: "0",
+    startingEnergy: "0",
     startingTeamPower: 10
   }
 } as const;

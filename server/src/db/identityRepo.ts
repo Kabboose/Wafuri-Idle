@@ -29,8 +29,8 @@ function mapAccountRecord(account: Account): AccountRecord {
 function mapPlayerRecord(player: {
   id: string;
   accountId: string;
-  mana: string;
-  manaGenerationRate: string;
+  energy: string;
+  energyPerSecond: string;
   teamPower: number;
   version: number;
   lastUpdateTimestampMs: Date;
@@ -40,8 +40,8 @@ function mapPlayerRecord(player: {
   return {
     id: player.id,
     accountId: player.accountId,
-    mana: player.mana,
-    manaGenerationRate: player.manaGenerationRate,
+    energy: player.energy,
+    energyPerSecond: player.energyPerSecond,
     teamPower: player.teamPower,
     version: player.version,
     lastUpdateTimestampMs: player.lastUpdateTimestampMs.toISOString(),
@@ -91,8 +91,8 @@ export async function createGuestAccountIdentity(
     const player = await tx.player.create({
       data: {
         accountId: account.id,
-        mana: input.player.mana,
-        manaGenerationRate: input.player.manaGenerationRate,
+        energy: input.player.energy,
+        energyPerSecond: input.player.energyPerSecond,
         teamPower: input.player.teamPower,
         version: input.player.version ?? 0,
         lastUpdateTimestampMs: input.player.lastUpdateTimestampMs

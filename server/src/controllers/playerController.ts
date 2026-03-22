@@ -19,8 +19,8 @@ export const getPlayerStateController: RequestHandler = async (request, response
     logger.info(
       {
         playerId,
-        mana: playerState.mana,
-        manaGenerationRate: playerState.manaGenerationRate,
+        energy: playerState.energy,
+        energyPerSecond: playerState.energyPerSecond,
         teamPower: playerState.teamPower
       },
       "state fetched"
@@ -51,8 +51,8 @@ export const upgradePlayerController: RequestHandler = async (request, response,
     logger.info(
       {
         playerId,
-        mana: playerState.mana,
-        manaGenerationRate: playerState.manaGenerationRate,
+        energy: playerState.energy,
+        energyPerSecond: playerState.energyPerSecond,
         teamPower: playerState.teamPower
       },
       "player upgraded"
@@ -83,8 +83,8 @@ export const tickPlayerController: RequestHandler = async (request, response, ne
     logger.info(
       {
         playerId,
-        mana: playerState.mana,
-        manaGenerationRate: playerState.manaGenerationRate,
+        energy: playerState.energy,
+        energyPerSecond: playerState.energyPerSecond,
         teamPower: playerState.teamPower
       },
       "tick processed"

@@ -7,8 +7,8 @@ const PLAYER_CACHE_TTL_SECONDS = 60;
 
 type CachedPlayerState = {
   id: string;
-  mana: string;
-  manaGenerationRate: string;
+  energy: string;
+  energyPerSecond: string;
   teamPower: number;
   version: number;
   lastUpdateTimestampMs: number;
@@ -25,8 +25,8 @@ function getPlayerCacheKey(playerId: string): string {
 function serializeCachedPlayerState(state: PlayerState): CachedPlayerState {
   return {
     ...state,
-    mana: stringifyFixed(state.mana),
-    manaGenerationRate: stringifyFixed(state.manaGenerationRate)
+    energy: stringifyFixed(state.energy),
+    energyPerSecond: stringifyFixed(state.energyPerSecond)
   };
 }
 
@@ -34,8 +34,8 @@ function serializeCachedPlayerState(state: PlayerState): CachedPlayerState {
 function deserializeCachedPlayerState(state: CachedPlayerState): PlayerState {
   return {
     ...state,
-    mana: parseFixed(state.mana),
-    manaGenerationRate: parseFixed(state.manaGenerationRate)
+    energy: parseFixed(state.energy),
+    energyPerSecond: parseFixed(state.energyPerSecond)
   };
 }
 

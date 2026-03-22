@@ -8,8 +8,8 @@ import type { PlayerMutation, PlayerState } from "../utils/playerTypes.js";
 function mapPlayerRecord(player: Player): PlayerState {
   return {
     id: player.id,
-    mana: parseFixed(player.mana),
-    manaGenerationRate: parseFixed(player.manaGenerationRate),
+    energy: parseFixed(player.energy),
+    energyPerSecond: parseFixed(player.energyPerSecond),
     teamPower: player.teamPower,
     version: player.version,
     lastUpdateTimestampMs: player.lastUpdateTimestampMs.getTime(),
@@ -21,8 +21,8 @@ function mapPlayerRecord(player: Player): PlayerState {
 /** Converts a domain mutation into the Prisma update payload for persistence. */
 function mapMutationToUpdate(mutation: PlayerMutation): Prisma.PlayerUpdateInput {
   return {
-    mana: stringifyFixed(mutation.mana),
-    manaGenerationRate: stringifyFixed(mutation.manaGenerationRate),
+    energy: stringifyFixed(mutation.energy),
+    energyPerSecond: stringifyFixed(mutation.energyPerSecond),
     teamPower: mutation.teamPower,
     lastUpdateTimestampMs: new Date(mutation.lastUpdateTimestampMs)
   };

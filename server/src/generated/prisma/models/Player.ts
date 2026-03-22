@@ -39,8 +39,8 @@ export type PlayerSumAggregateOutputType = {
 export type PlayerMinAggregateOutputType = {
   id: string | null
   accountId: string | null
-  mana: string | null
-  manaGenerationRate: string | null
+  energy: string | null
+  energyPerSecond: string | null
   teamPower: number | null
   version: number | null
   lastUpdateTimestampMs: Date | null
@@ -51,8 +51,8 @@ export type PlayerMinAggregateOutputType = {
 export type PlayerMaxAggregateOutputType = {
   id: string | null
   accountId: string | null
-  mana: string | null
-  manaGenerationRate: string | null
+  energy: string | null
+  energyPerSecond: string | null
   teamPower: number | null
   version: number | null
   lastUpdateTimestampMs: Date | null
@@ -63,8 +63,8 @@ export type PlayerMaxAggregateOutputType = {
 export type PlayerCountAggregateOutputType = {
   id: number
   accountId: number
-  mana: number
-  manaGenerationRate: number
+  energy: number
+  energyPerSecond: number
   teamPower: number
   version: number
   lastUpdateTimestampMs: number
@@ -87,8 +87,8 @@ export type PlayerSumAggregateInputType = {
 export type PlayerMinAggregateInputType = {
   id?: true
   accountId?: true
-  mana?: true
-  manaGenerationRate?: true
+  energy?: true
+  energyPerSecond?: true
   teamPower?: true
   version?: true
   lastUpdateTimestampMs?: true
@@ -99,8 +99,8 @@ export type PlayerMinAggregateInputType = {
 export type PlayerMaxAggregateInputType = {
   id?: true
   accountId?: true
-  mana?: true
-  manaGenerationRate?: true
+  energy?: true
+  energyPerSecond?: true
   teamPower?: true
   version?: true
   lastUpdateTimestampMs?: true
@@ -111,8 +111,8 @@ export type PlayerMaxAggregateInputType = {
 export type PlayerCountAggregateInputType = {
   id?: true
   accountId?: true
-  mana?: true
-  manaGenerationRate?: true
+  energy?: true
+  energyPerSecond?: true
   teamPower?: true
   version?: true
   lastUpdateTimestampMs?: true
@@ -210,8 +210,8 @@ export type PlayerGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalA
 export type PlayerGroupByOutputType = {
   id: string
   accountId: string
-  mana: string
-  manaGenerationRate: string
+  energy: string
+  energyPerSecond: string
   teamPower: number
   version: number
   lastUpdateTimestampMs: Date
@@ -245,8 +245,8 @@ export type PlayerWhereInput = {
   NOT?: Prisma.PlayerWhereInput | Prisma.PlayerWhereInput[]
   id?: Prisma.UuidFilter<"Player"> | string
   accountId?: Prisma.UuidFilter<"Player"> | string
-  mana?: Prisma.StringFilter<"Player"> | string
-  manaGenerationRate?: Prisma.StringFilter<"Player"> | string
+  energy?: Prisma.StringFilter<"Player"> | string
+  energyPerSecond?: Prisma.StringFilter<"Player"> | string
   teamPower?: Prisma.IntFilter<"Player"> | number
   version?: Prisma.IntFilter<"Player"> | number
   lastUpdateTimestampMs?: Prisma.DateTimeFilter<"Player"> | Date | string
@@ -258,8 +258,8 @@ export type PlayerWhereInput = {
 export type PlayerOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   accountId?: Prisma.SortOrder
-  mana?: Prisma.SortOrder
-  manaGenerationRate?: Prisma.SortOrder
+  energy?: Prisma.SortOrder
+  energyPerSecond?: Prisma.SortOrder
   teamPower?: Prisma.SortOrder
   version?: Prisma.SortOrder
   lastUpdateTimestampMs?: Prisma.SortOrder
@@ -274,8 +274,8 @@ export type PlayerWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.PlayerWhereInput | Prisma.PlayerWhereInput[]
   OR?: Prisma.PlayerWhereInput[]
   NOT?: Prisma.PlayerWhereInput | Prisma.PlayerWhereInput[]
-  mana?: Prisma.StringFilter<"Player"> | string
-  manaGenerationRate?: Prisma.StringFilter<"Player"> | string
+  energy?: Prisma.StringFilter<"Player"> | string
+  energyPerSecond?: Prisma.StringFilter<"Player"> | string
   teamPower?: Prisma.IntFilter<"Player"> | number
   version?: Prisma.IntFilter<"Player"> | number
   lastUpdateTimestampMs?: Prisma.DateTimeFilter<"Player"> | Date | string
@@ -287,8 +287,8 @@ export type PlayerWhereUniqueInput = Prisma.AtLeast<{
 export type PlayerOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   accountId?: Prisma.SortOrder
-  mana?: Prisma.SortOrder
-  manaGenerationRate?: Prisma.SortOrder
+  energy?: Prisma.SortOrder
+  energyPerSecond?: Prisma.SortOrder
   teamPower?: Prisma.SortOrder
   version?: Prisma.SortOrder
   lastUpdateTimestampMs?: Prisma.SortOrder
@@ -307,8 +307,8 @@ export type PlayerScalarWhereWithAggregatesInput = {
   NOT?: Prisma.PlayerScalarWhereWithAggregatesInput | Prisma.PlayerScalarWhereWithAggregatesInput[]
   id?: Prisma.UuidWithAggregatesFilter<"Player"> | string
   accountId?: Prisma.UuidWithAggregatesFilter<"Player"> | string
-  mana?: Prisma.StringWithAggregatesFilter<"Player"> | string
-  manaGenerationRate?: Prisma.StringWithAggregatesFilter<"Player"> | string
+  energy?: Prisma.StringWithAggregatesFilter<"Player"> | string
+  energyPerSecond?: Prisma.StringWithAggregatesFilter<"Player"> | string
   teamPower?: Prisma.IntWithAggregatesFilter<"Player"> | number
   version?: Prisma.IntWithAggregatesFilter<"Player"> | number
   lastUpdateTimestampMs?: Prisma.DateTimeWithAggregatesFilter<"Player"> | Date | string
@@ -318,8 +318,8 @@ export type PlayerScalarWhereWithAggregatesInput = {
 
 export type PlayerCreateInput = {
   id?: string
-  mana?: string
-  manaGenerationRate?: string
+  energy?: string
+  energyPerSecond?: string
   teamPower?: number
   version?: number
   lastUpdateTimestampMs?: Date | string
@@ -331,8 +331,8 @@ export type PlayerCreateInput = {
 export type PlayerUncheckedCreateInput = {
   id?: string
   accountId: string
-  mana?: string
-  manaGenerationRate?: string
+  energy?: string
+  energyPerSecond?: string
   teamPower?: number
   version?: number
   lastUpdateTimestampMs?: Date | string
@@ -342,8 +342,8 @@ export type PlayerUncheckedCreateInput = {
 
 export type PlayerUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  mana?: Prisma.StringFieldUpdateOperationsInput | string
-  manaGenerationRate?: Prisma.StringFieldUpdateOperationsInput | string
+  energy?: Prisma.StringFieldUpdateOperationsInput | string
+  energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
   lastUpdateTimestampMs?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -355,8 +355,8 @@ export type PlayerUpdateInput = {
 export type PlayerUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   accountId?: Prisma.StringFieldUpdateOperationsInput | string
-  mana?: Prisma.StringFieldUpdateOperationsInput | string
-  manaGenerationRate?: Prisma.StringFieldUpdateOperationsInput | string
+  energy?: Prisma.StringFieldUpdateOperationsInput | string
+  energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
   lastUpdateTimestampMs?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -367,8 +367,8 @@ export type PlayerUncheckedUpdateInput = {
 export type PlayerCreateManyInput = {
   id?: string
   accountId: string
-  mana?: string
-  manaGenerationRate?: string
+  energy?: string
+  energyPerSecond?: string
   teamPower?: number
   version?: number
   lastUpdateTimestampMs?: Date | string
@@ -378,8 +378,8 @@ export type PlayerCreateManyInput = {
 
 export type PlayerUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  mana?: Prisma.StringFieldUpdateOperationsInput | string
-  manaGenerationRate?: Prisma.StringFieldUpdateOperationsInput | string
+  energy?: Prisma.StringFieldUpdateOperationsInput | string
+  energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
   lastUpdateTimestampMs?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -390,8 +390,8 @@ export type PlayerUpdateManyMutationInput = {
 export type PlayerUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   accountId?: Prisma.StringFieldUpdateOperationsInput | string
-  mana?: Prisma.StringFieldUpdateOperationsInput | string
-  manaGenerationRate?: Prisma.StringFieldUpdateOperationsInput | string
+  energy?: Prisma.StringFieldUpdateOperationsInput | string
+  energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
   lastUpdateTimestampMs?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -407,8 +407,8 @@ export type PlayerNullableScalarRelationFilter = {
 export type PlayerCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   accountId?: Prisma.SortOrder
-  mana?: Prisma.SortOrder
-  manaGenerationRate?: Prisma.SortOrder
+  energy?: Prisma.SortOrder
+  energyPerSecond?: Prisma.SortOrder
   teamPower?: Prisma.SortOrder
   version?: Prisma.SortOrder
   lastUpdateTimestampMs?: Prisma.SortOrder
@@ -424,8 +424,8 @@ export type PlayerAvgOrderByAggregateInput = {
 export type PlayerMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   accountId?: Prisma.SortOrder
-  mana?: Prisma.SortOrder
-  manaGenerationRate?: Prisma.SortOrder
+  energy?: Prisma.SortOrder
+  energyPerSecond?: Prisma.SortOrder
   teamPower?: Prisma.SortOrder
   version?: Prisma.SortOrder
   lastUpdateTimestampMs?: Prisma.SortOrder
@@ -436,8 +436,8 @@ export type PlayerMaxOrderByAggregateInput = {
 export type PlayerMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   accountId?: Prisma.SortOrder
-  mana?: Prisma.SortOrder
-  manaGenerationRate?: Prisma.SortOrder
+  energy?: Prisma.SortOrder
+  energyPerSecond?: Prisma.SortOrder
   teamPower?: Prisma.SortOrder
   version?: Prisma.SortOrder
   lastUpdateTimestampMs?: Prisma.SortOrder
@@ -492,8 +492,8 @@ export type IntFieldUpdateOperationsInput = {
 
 export type PlayerCreateWithoutAccountInput = {
   id?: string
-  mana?: string
-  manaGenerationRate?: string
+  energy?: string
+  energyPerSecond?: string
   teamPower?: number
   version?: number
   lastUpdateTimestampMs?: Date | string
@@ -503,8 +503,8 @@ export type PlayerCreateWithoutAccountInput = {
 
 export type PlayerUncheckedCreateWithoutAccountInput = {
   id?: string
-  mana?: string
-  manaGenerationRate?: string
+  energy?: string
+  energyPerSecond?: string
   teamPower?: number
   version?: number
   lastUpdateTimestampMs?: Date | string
@@ -530,8 +530,8 @@ export type PlayerUpdateToOneWithWhereWithoutAccountInput = {
 
 export type PlayerUpdateWithoutAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  mana?: Prisma.StringFieldUpdateOperationsInput | string
-  manaGenerationRate?: Prisma.StringFieldUpdateOperationsInput | string
+  energy?: Prisma.StringFieldUpdateOperationsInput | string
+  energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
   lastUpdateTimestampMs?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -541,8 +541,8 @@ export type PlayerUpdateWithoutAccountInput = {
 
 export type PlayerUncheckedUpdateWithoutAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  mana?: Prisma.StringFieldUpdateOperationsInput | string
-  manaGenerationRate?: Prisma.StringFieldUpdateOperationsInput | string
+  energy?: Prisma.StringFieldUpdateOperationsInput | string
+  energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
   lastUpdateTimestampMs?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -555,8 +555,8 @@ export type PlayerUncheckedUpdateWithoutAccountInput = {
 export type PlayerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   accountId?: boolean
-  mana?: boolean
-  manaGenerationRate?: boolean
+  energy?: boolean
+  energyPerSecond?: boolean
   teamPower?: boolean
   version?: boolean
   lastUpdateTimestampMs?: boolean
@@ -568,8 +568,8 @@ export type PlayerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
 export type PlayerSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   accountId?: boolean
-  mana?: boolean
-  manaGenerationRate?: boolean
+  energy?: boolean
+  energyPerSecond?: boolean
   teamPower?: boolean
   version?: boolean
   lastUpdateTimestampMs?: boolean
@@ -581,8 +581,8 @@ export type PlayerSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
 export type PlayerSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   accountId?: boolean
-  mana?: boolean
-  manaGenerationRate?: boolean
+  energy?: boolean
+  energyPerSecond?: boolean
   teamPower?: boolean
   version?: boolean
   lastUpdateTimestampMs?: boolean
@@ -594,8 +594,8 @@ export type PlayerSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
 export type PlayerSelectScalar = {
   id?: boolean
   accountId?: boolean
-  mana?: boolean
-  manaGenerationRate?: boolean
+  energy?: boolean
+  energyPerSecond?: boolean
   teamPower?: boolean
   version?: boolean
   lastUpdateTimestampMs?: boolean
@@ -603,7 +603,7 @@ export type PlayerSelectScalar = {
   updatedAt?: boolean
 }
 
-export type PlayerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "accountId" | "mana" | "manaGenerationRate" | "teamPower" | "version" | "lastUpdateTimestampMs" | "createdAt" | "updatedAt", ExtArgs["result"]["player"]>
+export type PlayerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "accountId" | "energy" | "energyPerSecond" | "teamPower" | "version" | "lastUpdateTimestampMs" | "createdAt" | "updatedAt", ExtArgs["result"]["player"]>
 export type PlayerInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   account?: boolean | Prisma.AccountDefaultArgs<ExtArgs>
 }
@@ -622,8 +622,8 @@ export type $PlayerPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     accountId: string
-    mana: string
-    manaGenerationRate: string
+    energy: string
+    energyPerSecond: string
     teamPower: number
     version: number
     lastUpdateTimestampMs: Date
@@ -1055,8 +1055,8 @@ export interface Prisma__PlayerClient<T, Null = never, ExtArgs extends runtime.T
 export interface PlayerFieldRefs {
   readonly id: Prisma.FieldRef<"Player", 'String'>
   readonly accountId: Prisma.FieldRef<"Player", 'String'>
-  readonly mana: Prisma.FieldRef<"Player", 'String'>
-  readonly manaGenerationRate: Prisma.FieldRef<"Player", 'String'>
+  readonly energy: Prisma.FieldRef<"Player", 'String'>
+  readonly energyPerSecond: Prisma.FieldRef<"Player", 'String'>
   readonly teamPower: Prisma.FieldRef<"Player", 'Int'>
   readonly version: Prisma.FieldRef<"Player", 'Int'>
   readonly lastUpdateTimestampMs: Prisma.FieldRef<"Player", 'DateTime'>

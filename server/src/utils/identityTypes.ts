@@ -34,8 +34,8 @@ export type UpdateAccountInput = {
 export type PlayerRecord = {
   id: string;
   accountId: string;
-  mana: string;
-  manaGenerationRate: string;
+  energy: string;
+  energyPerSecond: string;
   teamPower: number;
   version: number;
   lastUpdateTimestampMs: string;
@@ -45,8 +45,8 @@ export type PlayerRecord = {
 
 export type CreatePlayerInput = {
   accountId: string;
-  mana: string;
-  manaGenerationRate: string;
+  energy: string;
+  energyPerSecond: string;
   teamPower: number;
   version?: number;
   lastUpdateTimestampMs: Date;

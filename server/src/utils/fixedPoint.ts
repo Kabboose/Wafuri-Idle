@@ -5,7 +5,7 @@ const MULTIPLIER_SCALE = BigInt(GAME_CONFIG.idle.multiplierScale);
 const TEAM_POWER_BONUS_BPS = BigInt(GAME_CONFIG.idle.teamPowerBonusBps);
 
 export const BASE_RATE = BigInt(GAME_CONFIG.idle.baseRate);
-export const RATE_UPGRADE_INCREMENT = BigInt(GAME_CONFIG.upgrade.manaGenerationRateIncrement);
+export const RATE_UPGRADE_INCREMENT = BigInt(GAME_CONFIG.upgrade.energyPerSecondIncrement);
 
 /** Parses a fixed-point numeric string from storage into bigint form. */
 export function parseFixed(value: string): bigint {
@@ -17,14 +17,14 @@ export function stringifyFixed(value: bigint): string {
   return value.toString();
 }
 
-/** Applies the team power multiplier to a base fixed-point mana rate. */
+/** Applies the team power multiplier to a base fixed-point energy rate. */
 export function getEffectiveRate(rate: bigint, teamPower: number): bigint {
   const multiplier = MULTIPLIER_SCALE + BigInt(teamPower) * TEAM_POWER_BONUS_BPS;
   return (rate * multiplier) / MULTIPLIER_SCALE;
 }
 
-/** Calculates mana gained over the provided elapsed milliseconds using fixed-point math. */
-export function calculateManaGain(elapsedMilliseconds: number, rate: bigint, teamPower: number): bigint {
+/** Calculates energy gained over the provided elapsed milliseconds using fixed-point math. */
+export function calculateEnergyGain(elapsedMilliseconds: number, rate: bigint, teamPower: number): bigint {
   const elapsed = BigInt(Math.max(elapsedMilliseconds, 0));
   return (elapsed * getEffectiveRate(rate, teamPower)) / 1000n;
 }

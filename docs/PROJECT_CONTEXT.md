@@ -105,15 +105,15 @@ UI includes:
 
 Current Gameplay Foundation (PROTOTYPE)
 
-- Idle resource generation exists (temporary mana-based system)
+- Idle resource generation exists (temporary energy-based system)
 - Upgrade system affects generation and power
 - Current authenticated gameplay endpoints are:
   - `GET /state` applies idle progress only
   - `POST /tick` applies idle progress only
   - `POST /upgrade` applies idle progress once, then upgrade once
 - Player state:
-  - mana
-  - manaGenerationRate
+  - energy
+  - energyPerSecond
   - teamPower
   - version
   - lastUpdateTimestampMs

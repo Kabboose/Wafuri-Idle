@@ -118,8 +118,8 @@ export function GameScreen({
       <h1>World Flipper-Inspired Idle Prototype</h1>
       {error ? <p className="error-text">{error}</p> : null}
       <p>Player ID: {playerState.id}</p>
-      <p>Mana: {formatFixed(playerState.mana)}</p>
-      <p>Mana generation rate: {formatFixed(playerState.manaGenerationRate)} / sec</p>
+      <p>Energy: {formatFixed(playerState.energy)}</p>
+      <p>Energy per second: {formatFixed(playerState.energyPerSecond)} / sec</p>
       <p>Team power: {playerState.teamPower}</p>
       <div className="button-row">
         {playerState.accountType === "GUEST" ? (

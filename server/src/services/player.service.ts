@@ -10,8 +10,8 @@ function serializePlayer(player: PlayerState, accountType: "GUEST" | "REGISTERED
   return {
     id: player.id,
     accountType,
-    mana: stringifyFixed(player.mana),
-    manaGenerationRate: stringifyFixed(player.manaGenerationRate),
+    energy: stringifyFixed(player.energy),
+    energyPerSecond: stringifyFixed(player.energyPerSecond),
     teamPower: player.teamPower,
     lastUpdateTimestampMs: player.lastUpdateTimestampMs,
     createdAt: new Date(player.createdAt).toISOString(),

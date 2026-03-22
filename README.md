@@ -25,8 +25,8 @@ Game balance and feature toggles live in [server/src/config/index.ts](server/src
 
 - Player state persists in PostgreSQL instead of process memory
 - Redis stores player cache entries
-- Every authenticated request recalculates idle mana from `lastUpdateTimestampMs`
-- Upgrades increase both `teamPower` and `manaGenerationRate`
+- Every authenticated request recalculates idle energy from `lastUpdateTimestampMs`
+- Upgrades increase both `teamPower` and `energyPerSecond`
 - Guest accounts can be created explicitly from the entry screen
 - Registered accounts can log in with username/password
 - Guest accounts can be upgraded in place via the in-game `Save Progress` flow
@@ -36,7 +36,7 @@ Game balance and feature toggles live in [server/src/config/index.ts](server/src
 
 ## Future Direction
 
-The current mana-based prototype is temporary scaffolding. The next gameplay phase shifts the project toward a more explicit loop:
+The current energy-based prototype is temporary scaffolding. The next gameplay phase shifts the project toward a more explicit loop:
 
 - idle Energy generation over time
 - short deterministic burst runs
