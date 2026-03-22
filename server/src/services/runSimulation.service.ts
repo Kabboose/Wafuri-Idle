@@ -16,6 +16,8 @@ import type {
 const DEFAULT_RUN_DURATION_MS = GAME_CONFIG.run.defaultDurationMs;
 const BASE_CRIT_DAMAGE_MULTIPLIER = BigInt(GAME_CONFIG.run.baseCritDamageMultiplier);
 const BASE_CRIT_CHANCE_SCALE = GAME_CONFIG.run.baseCritChanceScale;
+const PLAYBACK_COMBO_MILESTONE_THRESHOLDS = new Set<number>(GAME_CONFIG.run.playbackComboMilestoneThresholds);
+const PLAYBACK_FINISHER_LEAD_MS = GAME_CONFIG.run.playbackFinisherLeadMs;
 const SPEED_SCALE = GAME_CONFIG.run.speedScale;
 
 type SimulatedHit = {
@@ -149,7 +151,10 @@ function validatePlayback(playback: RunPlayback): void {
       }
     }
 
-    if (event.kind === "TRIGGER" && !entityIds.has(event.sourceEntityId)) {
+    if (
+      event.kind === "TRIGGER" &&
+      ((event.entityId && !entityIds.has(event.entityId)) || (event.targetEntityId && !entityIds.has(event.targetEntityId)))
+    ) {
       throw new Error("Playback references unknown trigger entity");
     }
 
@@ -157,7 +162,67 @@ function validatePlayback(playback: RunPlayback): void {
   }
 }
 
-/** Builds simple deterministic straight-line ball path, collision, and damage events in normalized space. */
+/** Builds a deterministic playback trigger for a world-space impact burst. */
+function createImpactBurstTrigger(
+  timelineTimestampMs: number,
+  ballEntityId: string,
+  enemyEntityId: string,
+  x: number,
+  y: number,
+  damage: bigint
+): TriggerEvent {
+  return {
+    kind: "TRIGGER",
+    timelineTimestampMs,
+    placement: "WORLD",
+    triggerKind: "IMPACT_BURST",
+    entityId: ballEntityId,
+    targetEntityId: enemyEntityId,
+    x,
+    y,
+    detail: {
+      damage: damage.toString()
+    }
+  };
+}
+
+/** Builds a deterministic playback trigger for a combo milestone. */
+function createComboMilestoneTrigger(
+  timelineTimestampMs: number,
+  ballEntityId: string,
+  enemyEntityId: string,
+  x: number,
+  y: number,
+  comboAfter: number
+): TriggerEvent {
+  return {
+    kind: "TRIGGER",
+    timelineTimestampMs,
+    placement: "WORLD",
+    triggerKind: "COMBO_MILESTONE",
+    entityId: ballEntityId,
+    targetEntityId: enemyEntityId,
+    x,
+    y,
+    detail: {
+      comboAfter,
+      comboThreshold: comboAfter
+    }
+  };
+}
+
+/** Builds a deterministic playback trigger for the run finisher beat. */
+function createRunFinisherTrigger(durationMs: number, ballEntityId: string): TriggerEvent {
+  return {
+    kind: "TRIGGER",
+    timelineTimestampMs: Math.max(durationMs - PLAYBACK_FINISHER_LEAD_MS, 0),
+    placement: "UI",
+    triggerKind: "RUN_FINISHER",
+    entityId: ballEntityId
+  };
+}
+
+/** Builds simple deterministic straight-line ball path, collision, damage, and sparse trigger events in normalized space. */
 function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hits: SimulatedHit[]): PlaybackEvent[] {
   const ballEntity = entities.find((entity) => entity.kind === "BALL");
   const enemyEntities = entities.filter((entity) => entity.kind === "ENEMY");
@@ -219,38 +284,27 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
       isCrit: hit.isCrit
     };
     const triggerEvents: TriggerEvent[] = [
-      {
-        kind: "TRIGGER",
-        timelineTimestampMs: approachEnd,
-        triggerType: "impact-burst",
-        sourceEntityId: ballEntity.id,
-        x: enemyEntity.spawnX,
-        y: enemyEntity.spawnY,
-        value: hit.damage.toString()
-      }
+      createImpactBurstTrigger(
+        approachEnd,
+        ballEntity.id,
+        enemyEntity.id,
+        enemyEntity.spawnX,
+        enemyEntity.spawnY,
+        hit.damage
+      )
     ];
 
-    if (hit.comboAfter % 5 === 0) {
-      triggerEvents.push({
-        kind: "TRIGGER",
-        timelineTimestampMs: approachEnd,
-        triggerType: "combo-milestone",
-        sourceEntityId: ballEntity.id,
-        x: enemyEntity.spawnX,
-        y: enemyEntity.spawnY,
-        comboDelta: hit.comboAfter
-      });
-    }
-
-    if (hit.comboAfter === hits.length) {
-      triggerEvents.push({
-        kind: "TRIGGER",
-        timelineTimestampMs: approachEnd,
-        triggerType: "enemy-defeated",
-        sourceEntityId: enemyEntity.id,
-        x: enemyEntity.spawnX,
-        y: enemyEntity.spawnY
-      });
+    if (PLAYBACK_COMBO_MILESTONE_THRESHOLDS.has(hit.comboAfter)) {
+      triggerEvents.push(
+        createComboMilestoneTrigger(
+          approachEnd,
+          ballEntity.id,
+          enemyEntity.id,
+          enemyEntity.spawnX,
+          enemyEntity.spawnY,
+          hit.comboAfter
+        )
+      );
     }
 
     events.push(approachEvent, collisionEvent, damageEvent, ...triggerEvents);
@@ -291,12 +345,7 @@ function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]):
       phase: "FINISH"
     }
   ];
-  const endBurstEvent: TriggerEvent = {
-    kind: "TRIGGER",
-    timelineTimestampMs: durationMs,
-    triggerType: "run-end-burst",
-    sourceEntityId: "ball-1"
-  };
+  const runFinisherEvent = createRunFinisherTrigger(durationMs, "ball-1");
 
   const playback: RunPlayback = {
     durationMs,
@@ -306,7 +355,7 @@ function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]):
       zones: []
     },
     entities,
-    events: [phaseEvents[0], ...motionEvents, phaseEvents[1], endBurstEvent]
+    events: [phaseEvents[0], ...motionEvents, runFinisherEvent, phaseEvents[1]]
   };
 
   validatePlayback(playback);

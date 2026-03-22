@@ -29,7 +29,9 @@ export const GAME_CONFIG = {
     defaultDurationMs: 10_000,
     baseCritDamageMultiplier: "2",
     baseCritChanceScale: 10_000,
-    speedScale: 1_000
+    speedScale: 1_000,
+    playbackComboMilestoneThresholds: [5, 10],
+    playbackFinisherLeadMs: 250
   },
   rewards: {
     currencyPerDamage: "1",

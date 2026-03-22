@@ -85,16 +85,37 @@ export interface DamageEvent {
   isCrit: boolean;
 }
 
+/** Enumerates the constrained playback trigger kinds supported by the replay contract. */
+export type TriggerKind =
+  | "IMPACT_BURST"
+  | "COMBO_MILESTONE"
+  | "ENEMY_DEFEATED"
+  | "SKILL_ACTIVATED"
+  | "CHAIN_STARTED"
+  | "CHAIN_EXTENDED"
+  | "RUN_FINISHER";
+
+/** Distinguishes world-space trigger moments from UI-only playback cues. */
+export type TriggerPlacement = "WORLD" | "UI";
+
+/** Keeps trigger detail metadata small while leaving room for future playback cues. */
+export interface TriggerDetail {
+  damage?: BigIntString;
+  comboAfter?: number;
+  comboThreshold?: number;
+}
+
 /** Extensible playback trigger hook for future effects layered onto the timeline. */
 export interface TriggerEvent {
   kind: "TRIGGER";
   timelineTimestampMs: number;
-  triggerType: string;
-  sourceEntityId: string;
+  placement: TriggerPlacement;
+  triggerKind: TriggerKind;
+  entityId?: string;
+  targetEntityId?: string;
   x?: number;
   y?: number;
-  value?: BigIntString;
-  comboDelta?: number;
+  detail?: TriggerDetail;
 }
 
 /** High-level run playback marker used to segment the replay timeline. */

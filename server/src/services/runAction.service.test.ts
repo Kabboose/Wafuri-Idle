@@ -72,7 +72,7 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
   assert.equal(result.runResult.playback.events.filter((event) => event.kind === "BALL_PATH").length, 20);
   assert.equal(result.runResult.playback.events.filter((event) => event.kind === "COLLISION").length, 10);
   assert.equal(result.runResult.playback.events.filter((event) => event.kind === "DAMAGE").length, 10);
-  assert.equal(result.runResult.playback.events.filter((event) => event.kind === "TRIGGER").length, 14);
+  assert.equal(result.runResult.playback.events.filter((event) => event.kind === "TRIGGER").length, 13);
   assert.ok(
     new Set(
       result.runResult.playback.events

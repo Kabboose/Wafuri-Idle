@@ -197,15 +197,26 @@ export type PlaybackDamageEvent = {
   "isCrit": boolean;
 };
 
+export type PlaybackTriggerKind = "IMPACT_BURST" | "COMBO_MILESTONE" | "ENEMY_DEFEATED" | "SKILL_ACTIVATED" | "CHAIN_STARTED" | "CHAIN_EXTENDED" | "RUN_FINISHER";
+
+export type PlaybackTriggerPlacement = "WORLD" | "UI";
+
+export type PlaybackTriggerDetail = {
+  "damage"?: string;
+  "comboAfter"?: number;
+  "comboThreshold"?: number;
+};
+
 export type PlaybackTriggerEvent = {
   "kind": "TRIGGER";
   "timelineTimestampMs": number;
-  "triggerType": string;
-  "sourceEntityId": string;
+  "placement": PlaybackTriggerPlacement;
+  "triggerKind": PlaybackTriggerKind;
+  "entityId"?: string;
+  "targetEntityId"?: string;
   "x"?: number;
   "y"?: number;
-  "value"?: string;
-  "comboDelta"?: number;
+  "detail"?: PlaybackTriggerDetail;
 };
 
 export type PlaybackPhaseEvent = {

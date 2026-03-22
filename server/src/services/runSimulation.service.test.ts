@@ -82,7 +82,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.equal(ballPathEvents.length, 20);
   assert.equal(collisionEvents.length, 10);
   assert.equal(damageEvents.length, 10);
-  assert.equal(triggerEvents.length, 14);
+  assert.equal(triggerEvents.length, 13);
   assert.ok(
     ballPathEvents.every(
       (event) =>
@@ -102,14 +102,15 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.ok(new Set(collisionEvents.map((event) => event.targetEntityId)).size > 1);
   assert.ok(new Set(damageEvents.map((event) => event.targetEntityId)).size > 1);
 
-  const impactBurstEvents = triggerEvents.filter((event) => event.triggerType === "impact-burst");
-  const comboMilestoneEvents = triggerEvents.filter((event) => event.triggerType === "combo-milestone");
-  const enemyDefeatedEvents = triggerEvents.filter((event) => event.triggerType === "enemy-defeated");
-  const runEndBurstEvents = triggerEvents.filter((event) => event.triggerType === "run-end-burst");
+  const impactBurstEvents = triggerEvents.filter((event) => event.triggerKind === "IMPACT_BURST");
+  const comboMilestoneEvents = triggerEvents.filter((event) => event.triggerKind === "COMBO_MILESTONE");
+  const runFinisherEvents = triggerEvents.filter((event) => event.triggerKind === "RUN_FINISHER");
   assert.equal(impactBurstEvents.length, 10);
   assert.equal(comboMilestoneEvents.length, 2);
-  assert.equal(enemyDefeatedEvents.length, 1);
-  assert.equal(runEndBurstEvents.length, 1);
+  assert.equal(runFinisherEvents.length, 1);
+  assert.ok(impactBurstEvents.every((event) => event.placement === "WORLD"));
+  assert.ok(comboMilestoneEvents.every((event) => event.placement === "WORLD"));
+  assert.ok(runFinisherEvents.every((event) => event.placement === "UI"));
 
   assert.deepEqual(
     damageEvents.map((event) => event.timelineTimestampMs),
@@ -127,6 +128,11 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     damageEvents.reduce((total, event) => total + BigInt(event.damage), 0n).toString(),
     result.totalDamage
   );
+  assert.deepEqual(
+    comboMilestoneEvents.map((event) => event.detail?.comboThreshold),
+    [5, 10]
+  );
+  assert.equal(runFinisherEvents[0]?.timelineTimestampMs, 9_750);
 
   for (let index = 0; index < collisionEvents.length; index += 1) {
     const collisionEventIndex: number = result.playback.events.findIndex((event) => event === collisionEvents[index]);
@@ -159,7 +165,13 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     }
 
     if (event.kind === "TRIGGER") {
-      assert.ok(entityIds.has(event.sourceEntityId));
+      if (event.entityId) {
+        assert.ok(entityIds.has(event.entityId));
+      }
+
+      if (event.targetEntityId) {
+        assert.ok(entityIds.has(event.targetEntityId));
+      }
     }
 
     previousEventTime = eventTime;
@@ -183,11 +195,11 @@ test("simulateRun applies crit logic deterministically", () => {
   const damageEvents = result.playback.events.filter((event) => event.kind === "DAMAGE");
   const impactBurstEvents = result.playback.events.filter(
     (event): event is Extract<PlaybackEvent, { kind: "TRIGGER" }> =>
-      event.kind === "TRIGGER" && event.triggerType === "impact-burst"
+      event.kind === "TRIGGER" && event.triggerKind === "IMPACT_BURST"
   );
   assert.ok(damageEvents.every((event) => event.isCrit));
   assert.deepEqual(
-    impactBurstEvents.map((event) => event.value),
+    impactBurstEvents.map((event) => event.detail?.damage),
     damageEvents.map((event) => event.damage)
   );
 });

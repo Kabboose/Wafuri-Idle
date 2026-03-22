@@ -1205,14 +1205,48 @@
           }
         }
       },
+      "PlaybackTriggerKind": {
+        "type": "string",
+        "enum": [
+          "IMPACT_BURST",
+          "COMBO_MILESTONE",
+          "ENEMY_DEFEATED",
+          "SKILL_ACTIVATED",
+          "CHAIN_STARTED",
+          "CHAIN_EXTENDED",
+          "RUN_FINISHER"
+        ]
+      },
+      "PlaybackTriggerPlacement": {
+        "type": "string",
+        "enum": [
+          "WORLD",
+          "UI"
+        ]
+      },
+      "PlaybackTriggerDetail": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "damage": {
+            "type": "string"
+          },
+          "comboAfter": {
+            "type": "integer"
+          },
+          "comboThreshold": {
+            "type": "integer"
+          }
+        }
+      },
       "PlaybackTriggerEvent": {
         "type": "object",
         "additionalProperties": false,
         "required": [
           "kind",
           "timelineTimestampMs",
-          "triggerType",
-          "sourceEntityId"
+          "placement",
+          "triggerKind"
         ],
         "properties": {
           "kind": {
@@ -1224,10 +1258,16 @@
           "timelineTimestampMs": {
             "type": "integer"
           },
-          "triggerType": {
+          "placement": {
+            "$ref": "#/components/schemas/PlaybackTriggerPlacement"
+          },
+          "triggerKind": {
+            "$ref": "#/components/schemas/PlaybackTriggerKind"
+          },
+          "entityId": {
             "type": "string"
           },
-          "sourceEntityId": {
+          "targetEntityId": {
             "type": "string"
           },
           "x": {
@@ -1236,11 +1276,8 @@
           "y": {
             "type": "number"
           },
-          "value": {
-            "type": "string"
-          },
-          "comboDelta": {
-            "type": "integer"
+          "detail": {
+            "$ref": "#/components/schemas/PlaybackTriggerDetail"
           }
         }
       },
