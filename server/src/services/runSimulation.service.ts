@@ -1,5 +1,5 @@
 import { GAME_CONFIG } from "../config/index.js";
-import type { RunInput, RunResult, RunTriggerEvent } from "../utils/runTypes.js";
+import type { PlaybackEntity, RunInput, RunPlayback, RunResult, RunTriggerEvent } from "../utils/runTypes.js";
 
 const DEFAULT_RUN_DURATION_MS = GAME_CONFIG.run.defaultDurationMs;
 const BASE_CRIT_DAMAGE_MULTIPLIER = BigInt(GAME_CONFIG.run.baseCritDamageMultiplier);
@@ -40,6 +40,45 @@ function calculateHitCount(speed: number, durationMs: number): number {
   return Math.floor((normalizedSpeed * durationMs) / SPEED_SCALE);
 }
 
+/** Maps a seeded random value into a normalized inclusive range. */
+function normalizePosition(nextRandom: () => number, min: number, max: number): number {
+  return min + nextRandom() * (max - min);
+}
+
+/** Builds the deterministic entity layout for the run playback snapshot. */
+function createPlaybackEntities(seed: string): PlaybackEntity[] {
+  const nextRandom = createSeededRng(`${seed}:playback-layout`);
+
+  return [
+    {
+      id: "ball-1",
+      kind: "BALL",
+      spawnX: 0.5,
+      spawnY: 0.15
+    },
+    {
+      id: "enemy-1",
+      kind: "ENEMY",
+      spawnX: normalizePosition(nextRandom, 0.2, 0.8),
+      spawnY: normalizePosition(nextRandom, 0.55, 0.85)
+    }
+  ];
+}
+
+/** Builds the minimal deterministic playback payload for a simulated run. */
+function createPlayback(seed: string, durationMs: number): RunPlayback {
+  return {
+    durationMs,
+    arena: {
+      width: 1,
+      height: 1,
+      zones: []
+    },
+    entities: createPlaybackEntities(seed),
+    events: []
+  };
+}
+
 /** Simulates a deterministic fixed-duration run and returns aggregate combat output only. */
 export function simulateRun(input: RunInput): RunResult {
   const durationMs = Math.max(Math.floor(input.runDurationMs), 0) || DEFAULT_RUN_DURATION_MS;
@@ -72,6 +111,7 @@ export function simulateRun(input: RunInput): RunResult {
     totalDamage: totalDamage.toString(),
     comboCount,
     triggers,
-    durationMs
+    durationMs,
+    playback: createPlayback(input.seed, durationMs)
   };
 }

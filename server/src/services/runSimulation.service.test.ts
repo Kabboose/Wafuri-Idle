@@ -38,6 +38,25 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.equal(result.comboCount, 10);
   assert.equal(result.triggers.length, 10);
   assert.equal(result.durationMs, 10_000);
+  assert.equal(result.playback?.durationMs, 10_000);
+  assert.deepEqual(result.playback?.arena, {
+    width: 1,
+    height: 1,
+    zones: []
+  });
+  assert.equal(result.playback?.entities.length, 2);
+  assert.deepEqual(result.playback?.entities[0], {
+    id: "ball-1",
+    kind: "BALL",
+    spawnX: 0.5,
+    spawnY: 0.15
+  });
+  assert.equal(result.playback?.entities[1]?.kind, "ENEMY");
+  assert.ok((result.playback?.entities[1]?.spawnX ?? -1) >= 0);
+  assert.ok((result.playback?.entities[1]?.spawnX ?? 2) <= 1);
+  assert.ok((result.playback?.entities[1]?.spawnY ?? -1) >= 0);
+  assert.ok((result.playback?.entities[1]?.spawnY ?? 2) <= 1);
+  assert.deepEqual(result.playback?.events, []);
 });
 
 test("simulateRun applies crit logic deterministically", () => {

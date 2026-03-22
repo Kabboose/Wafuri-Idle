@@ -41,6 +41,21 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
 
   assert.equal(result.runResult.comboCount, 10);
   assert.equal(result.runResult.totalDamage, "20000");
+  assert.equal(result.runResult.playback?.durationMs, 10_000);
+  assert.deepEqual(result.runResult.playback?.arena, {
+    width: 1,
+    height: 1,
+    zones: []
+  });
+  assert.equal(result.runResult.playback?.entities.length, 2);
+  assert.deepEqual(result.runResult.playback?.entities[0], {
+    id: "ball-1",
+    kind: "BALL",
+    spawnX: 0.5,
+    spawnY: 0.15
+  });
+  assert.equal(result.runResult.playback?.entities[1]?.kind, "ENEMY");
+  assert.deepEqual(result.runResult.playback?.events, []);
   assert.equal(result.rewardResult.grantedResources.currency, "20000");
   assert.equal(result.rewardResult.grantedResources.progression, "10000000");
   assert.equal(result.player.energy, "22000000");
