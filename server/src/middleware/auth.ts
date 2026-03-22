@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken";
 import type { NextFunction, Request, Response } from "express";
 
 import { config } from "../config/index.js";
+import { findAccountById } from "../db/accountRepo.js";
 import type { AuthTokenPayload } from "../utils/playerTypes.js";
 
 /** Validates the bearer token and attaches the authenticated account and player ids to the request context. */
@@ -17,8 +18,15 @@ export async function requireAuth(request: Request, response: Response, next: Ne
     const token = authorizationHeader.slice("Bearer ".length);
     const payload = jwt.verify(token, config.jwtSecret) as AuthTokenPayload;
 
-    if (!payload.accountId || !payload.playerId) {
+    if (!payload.accountId || !payload.playerId || !payload.sessionVersion) {
       response.status(401).json({ success: false, error: "Invalid token payload" });
+      return;
+    }
+
+    const account = await findAccountById(payload.accountId);
+
+    if (!account || account.sessionVersion !== payload.sessionVersion) {
+      response.status(401).json({ success: false, error: "Invalid bearer token" });
       return;
     }
 

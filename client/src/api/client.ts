@@ -6,6 +6,11 @@ type ApiSuccessResponse<T> = {
   data: T;
 };
 
+type ApiErrorResponse = {
+  success: false;
+  error: string;
+};
+
 /** Error raised when an authenticated API request loses authorization. */
 export class AuthError extends Error {
   constructor(message = "Unauthorized") {
@@ -46,7 +51,19 @@ async function apiRequest<T>(path: string, method: "GET" | "POST", body?: unknow
   }
 
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    let message = `Request failed: ${response.status}`;
+
+    try {
+      const payload = (await response.json()) as ApiErrorResponse;
+
+      if (payload.error) {
+        message = payload.error;
+      }
+    } catch {
+      // Fall back to the generic status-based message when the response body is unavailable.
+    }
+
+    throw new Error(message);
   }
 
   const payload = (await response.json()) as ApiSuccessResponse<T>;
@@ -65,7 +82,19 @@ async function publicApiRequest<T>(path: string, method: "GET" | "POST", body?: 
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    let message = `Request failed: ${response.status}`;
+
+    try {
+      const payload = (await response.json()) as ApiErrorResponse;
+
+      if (payload.error) {
+        message = payload.error;
+      }
+    } catch {
+      // Fall back to the generic status-based message when the response body is unavailable.
+    }
+
+    throw new Error(message);
   }
 
   const payload = (await response.json()) as ApiSuccessResponse<T>;

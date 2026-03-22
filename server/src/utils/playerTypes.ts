@@ -1,5 +1,6 @@
 export type SerializedPlayerState = {
   id: string;
+  accountType: "GUEST" | "REGISTERED";
   mana: string;
   manaGenerationRate: string;
   teamPower: number;
@@ -32,6 +33,7 @@ export type AuthenticatedUser = {
 };
 
 export type AuthTokenPayload = AuthenticatedUser & {
+  sessionVersion: string;
   iat?: number;
   exp?: number;
 };

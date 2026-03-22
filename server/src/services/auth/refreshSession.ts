@@ -69,7 +69,7 @@ export async function refreshSession(input: RefreshSessionInput): Promise<Refres
     throw new Error("Player not found");
   }
 
-  const nextTokens = createAuthTokens(account.id, player.id, new Date(input.nowMs));
+  const nextTokens = createAuthTokens(account.id, player.id, account.sessionVersion, new Date(input.nowMs));
 
   await rotateRefreshSession(session.id, {
     accountId: account.id,

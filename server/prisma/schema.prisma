@@ -15,6 +15,7 @@ enum AccountType {
 model Account {
   id                   String               @id @default(uuid()) @db.Uuid
   type                 AccountType          @default(GUEST)
+  sessionVersion       String               @default(uuid()) @db.Uuid
   username             String?
   usernameNormalized   String?              @unique
   email                String?

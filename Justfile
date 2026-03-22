@@ -54,10 +54,20 @@ prisma-migrate:
 build:
   {{nvm}} && npm run build
 
+test:
+  {{nvm}} && npm run test --workspace server
+  {{nvm}} && npm run build --workspace client
+
 server-build:
   {{nvm}} && npm run build --workspace server
 
 client-build:
+  {{nvm}} && npm run build --workspace client
+
+server-test:
+  {{nvm}} && npm run test --workspace server
+
+client-test:
   {{nvm}} && npm run build --workspace client
 
 server:

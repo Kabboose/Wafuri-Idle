@@ -24,10 +24,14 @@ function formatFixed(value: string): string {
 /** Renders the authenticated game view and keeps the displayed player state synced with the server. */
 export function GameScreen({
   onAuthFailure,
-  upgradeAccount
+  upgradeAccount,
+  logout,
+  logoutAll
 }: {
   onAuthFailure: () => void;
   upgradeAccount: (username: string, password: string, email: string) => Promise<void>;
+  logout: () => Promise<void>;
+  logoutAll: () => Promise<void>;
 }) {
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
@@ -118,11 +122,19 @@ export function GameScreen({
       <p>Mana generation rate: {formatFixed(playerState.manaGenerationRate)} / sec</p>
       <p>Team power: {playerState.teamPower}</p>
       <div className="button-row">
-        <button type="button" className="secondary-button" onClick={() => setIsUpgradeOpen(true)}>
-          Save Progress
-        </button>
+        {playerState.accountType === "GUEST" ? (
+          <button type="button" className="secondary-button" onClick={() => setIsUpgradeOpen(true)}>
+            Save Progress
+          </button>
+        ) : null}
         <button type="button" onClick={() => void handleUpgrade()}>
           Upgrade Team
+        </button>
+        <button type="button" className="secondary-button" onClick={() => void logout()}>
+          Log Out
+        </button>
+        <button type="button" className="secondary-button" onClick={() => void logoutAll()}>
+          Log Out All Devices
         </button>
       </div>
       {isUpgradeOpen ? (

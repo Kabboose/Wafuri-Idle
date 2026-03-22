@@ -58,6 +58,7 @@ Rules:
 - Guest-account upgrade must preserve the existing linked player and must not create a second player record.
 - Refresh-token use should rotate the refresh token, soft-revoke the old session, and prevent old token reuse.
 - Refresh-token replay should be treated as a security event, logged, and should revoke remaining sessions for the affected account when feasible.
+- Logout and logout-all flows must use soft revocation and remain safe to repeat.
 - Failed authenticated requests must return control to the auth state machine instead of leaving stale authenticated UI mounted.
 - `Account` represents identity and authentication.
 - `Player` represents game state only.
@@ -254,6 +255,13 @@ Do not log sensitive secrets or raw JWTs.
 - Prefer concise explanations over noisy commentary.
 - Preserve the existing standard when adding new code.
 
+## Testing Rules
+
+- Tests must be safe to run in parallel by default.
+- Do not rely on global table wipes, shared mutable fixtures, or serialized execution to make tests pass.
+- Test data should be isolated per test, typically through unique identifiers or per-test setup scoped to that test only.
+- If a test genuinely cannot run in parallel, that constraint must be explicit and narrowly scoped.
+
 ## Frontend Rules
 
 - The client displays server-calculated state only.
@@ -266,6 +274,7 @@ Do not log sensitive secrets or raw JWTs.
 - Authenticated screens must report auth failures back into the auth state machine.
 - Guest creation, login, refresh, and upgrade flows must go through shared auth helpers or hooks rather than ad hoc component fetch calls.
 - Refresh handlers must replace stored access and refresh tokens atomically and keep single-flight behavior for concurrent `401` recovery.
+- Logout actions must always clear local tokens and transition the app back into the explicit auth-entry state.
 
 ## Worker Compatibility
 

@@ -1,4 +1,6 @@
-import { Prisma } from "@prisma/client";
+import { randomUUID } from "crypto";
+
+import { Prisma, type Account } from "@prisma/client";
 
 import { prisma } from "./prisma.js";
 import type { AccountRecord, CreateAccountInput, UpdateAccountInput } from "../utils/identityTypes.js";
@@ -21,20 +23,11 @@ function normalizeLookupValue(value: string): string {
   return value.trim().toLowerCase();
 }
 
-function mapAccountRecord(account: {
-  id: string;
-  type: "GUEST" | "REGISTERED";
-  username: string | null;
-  usernameNormalized: string | null;
-  email: string | null;
-  emailNormalized: string | null;
-  passwordHash: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}): AccountRecord {
+function mapAccountRecord(account: Account): AccountRecord {
   return {
     id: account.id,
     type: account.type,
+    sessionVersion: account.sessionVersion,
     username: account.username,
     usernameNormalized: account.usernameNormalized,
     email: account.email,
@@ -130,6 +123,11 @@ export type UpgradeRegisteredAccountInput = {
   passwordHash: string;
 };
 
+export type RevokeSessionsAndRotateSessionVersionResult = {
+  revokedCount: number;
+  sessionVersion: string;
+};
+
 /**
  * Upgrades an existing account to a registered identity in one atomic write.
  * Relies on normalized unique constraints for username and email safety under concurrency.
@@ -196,4 +194,37 @@ export async function upgradeAccountToRegistered(
 
     throw error;
   }
+}
+
+/**
+ * Soft-revokes all active sessions for an account and rotates its session version atomically.
+ * The rotated session version invalidates already-issued access tokens immediately.
+ */
+export async function revokeSessionsAndRotateSessionVersion(
+  accountId: string,
+  revokedAt: Date
+): Promise<RevokeSessionsAndRotateSessionVersionResult> {
+  return prisma.$transaction(async (tx) => {
+    const revokeResult = await tx.session.updateMany({
+      where: {
+        accountId,
+        revokedAt: null
+      },
+      data: {
+        revokedAt
+      }
+    });
+
+    const account = await tx.account.update({
+      where: { id: accountId },
+      data: {
+        sessionVersion: randomUUID()
+      } as Prisma.AccountUpdateInput
+    });
+
+    return {
+      revokedCount: revokeResult.count,
+      sessionVersion: account.sessionVersion
+    };
+  });
 }

@@ -4,6 +4,8 @@ import { createGuestSession } from "../services/auth/createGuestSession.js";
 import { issueRefreshedAccessToken } from "../services/auth/issueRefreshedAccessToken.js";
 import { issueAuthSession } from "../services/auth/issueAuthSession.js";
 import { login } from "../services/auth/login.js";
+import { logoutAllSessions } from "../services/auth/logoutAllSessions.js";
+import { logoutSession } from "../services/auth/logoutSession.js";
 import { requestPasswordReset } from "../services/auth/requestPasswordReset.js";
 import { resetPassword } from "../services/auth/resetPassword.js";
 import { upgradeAccount } from "../services/auth/upgradeAccount.js";
@@ -114,6 +116,54 @@ export const refreshSessionController: RequestHandler = async (request, response
       data: {
         accessToken: result.accessToken,
         refreshToken: result.refreshToken
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Soft-revokes the current session referenced by the provided refresh token. */
+export const logoutSessionController: RequestHandler = async (request, response, next): Promise<void> => {
+  try {
+    const now = new Date();
+    const { refreshToken } = request.body as {
+      refreshToken: string;
+    };
+
+    await logoutSession({
+      refreshToken,
+      now
+    });
+
+    response.json({
+      success: true,
+      data: {}
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/** Soft-revokes every active session for the authenticated account. */
+export const logoutAllSessionsController: RequestHandler = async (request, response, next): Promise<void> => {
+  try {
+    const accountId = request.user?.accountId;
+
+    if (!accountId) {
+      next(new Error("Unauthorized"));
+      return;
+    }
+
+    const result = await logoutAllSessions({
+      accountId,
+      now: new Date()
+    });
+
+    response.json({
+      success: true,
+      data: {
+        revokedCount: result.revokedCount
       }
     });
   } catch (error) {

@@ -64,6 +64,24 @@ export async function findAnyByRefreshTokenHash(tokenHash: string): Promise<Sess
   return session ? mapSessionRecord(session) : null;
 }
 
+/** Soft-revokes the active session matching a hashed refresh token and returns the affected count. */
+export async function revokeSessionByTokenHash(tokenHash: string, now: Date): Promise<number> {
+  const result = await prisma.session.updateMany({
+    where: {
+      tokenHash,
+      revokedAt: null,
+      expiresAt: {
+        gt: now
+      }
+    },
+    data: {
+      revokedAt: now
+    }
+  });
+
+  return result.count;
+}
+
 /**
  * Soft-revokes the current refresh session and creates a replacement session atomically.
  * Expects the caller to provide the next token hash, expiry, and authoritative revocation time.
@@ -113,6 +131,24 @@ export async function revokeAllSessionsForAccount(accountId: string, revokedAt: 
   });
 
   return result.count;
+}
+
+/** Lists all active sessions for an account using the current time as the activity boundary. */
+export async function listActiveSessionsForAccount(accountId: string, nowMs: number): Promise<SessionRecord[]> {
+  const sessions = await prisma.session.findMany({
+    where: {
+      accountId,
+      revokedAt: null,
+      expiresAt: {
+        gt: new Date(nowMs)
+      }
+    },
+    orderBy: {
+      createdAt: "desc"
+    }
+  });
+
+  return sessions.map(mapSessionRecord);
 }
 
 /** Deletes sessions whose expiry time has passed and returns the number removed. */

@@ -6,14 +6,15 @@ import { logger } from "../utils/logger.js";
 export const getPlayerStateController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
     const now = Date.now();
+    const accountId = request.user?.accountId;
     const playerId = request.user?.playerId;
 
-    if (!playerId) {
+    if (!accountId || !playerId) {
       next(new Error("Unauthorized"));
       return;
     }
 
-    const playerState = await getPlayerState(playerId, now);
+    const playerState = await getPlayerState(accountId, playerId, now);
 
     logger.info(
       {
@@ -37,14 +38,15 @@ export const getPlayerStateController: RequestHandler = async (request, response
 export const upgradePlayerController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
     const now = Date.now();
+    const accountId = request.user?.accountId;
     const playerId = request.user?.playerId;
 
-    if (!playerId) {
+    if (!accountId || !playerId) {
       next(new Error("Unauthorized"));
       return;
     }
 
-    const playerState = await upgradePlayer(playerId, now);
+    const playerState = await upgradePlayer(accountId, playerId, now);
 
     logger.info(
       {
@@ -68,14 +70,15 @@ export const upgradePlayerController: RequestHandler = async (request, response,
 export const tickPlayerController: RequestHandler = async (request, response, next): Promise<void> => {
   try {
     const now = Date.now();
+    const accountId = request.user?.accountId;
     const playerId = request.user?.playerId;
 
-    if (!playerId) {
+    if (!accountId || !playerId) {
       next(new Error("Unauthorized"));
       return;
     }
 
-    const playerState = await getPlayerState(playerId, now);
+    const playerState = await getPlayerState(accountId, playerId, now);
 
     logger.info(
       {

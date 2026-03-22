@@ -14,8 +14,8 @@ export type AuthTokens = {
  * Signs a short-lived access JWT for the provided authenticated identity.
  * Expects authoritative account and player ids and uses the configured signing secret.
  */
-export function createAccessToken(accountId: string, playerId: string): string {
-  return jwt.sign({ accountId, playerId }, config.jwtSecret, {
+export function createAccessToken(accountId: string, playerId: string, sessionVersion: string): string {
+  return jwt.sign({ accountId, playerId, sessionVersion }, config.jwtSecret, {
     expiresIn: config.accessTokenExpiresIn as SignOptions["expiresIn"]
   });
 }
@@ -47,11 +47,11 @@ export function getRefreshTokenExpiresAt(now: Date): Date {
  * Creates the full access and refresh token bundle needed by auth services.
  * Accepts the current time so token expiry is derived from one captured instant.
  */
-export function createAuthTokens(accountId: string, playerId: string, now: Date): AuthTokens {
+export function createAuthTokens(accountId: string, playerId: string, sessionVersion: string, now: Date): AuthTokens {
   const refreshToken = createRefreshToken();
 
   return {
-    accessToken: createAccessToken(accountId, playerId),
+    accessToken: createAccessToken(accountId, playerId, sessionVersion),
     refreshToken,
     refreshTokenHash: hashRefreshToken(refreshToken),
     refreshTokenExpiresAt: getRefreshTokenExpiresAt(now)

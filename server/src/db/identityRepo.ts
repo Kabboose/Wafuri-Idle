@@ -1,3 +1,5 @@
+import type { Account } from "@prisma/client";
+
 import { prisma } from "./prisma.js";
 import type { AccountRecord, CreateAccountInput, CreatePlayerInput, PlayerRecord } from "../utils/identityTypes.js";
 
@@ -5,20 +7,11 @@ import type { AccountRecord, CreateAccountInput, CreatePlayerInput, PlayerRecord
  * Maps a Prisma account row into the shared identity record shape.
  * Converts timestamps to ISO strings for service-layer consumption.
  */
-function mapAccountRecord(account: {
-  id: string;
-  type: "GUEST" | "REGISTERED";
-  username: string | null;
-  usernameNormalized: string | null;
-  email: string | null;
-  emailNormalized: string | null;
-  passwordHash: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-}): AccountRecord {
+function mapAccountRecord(account: Account): AccountRecord {
   return {
     id: account.id,
     type: account.type,
+    sessionVersion: account.sessionVersion,
     username: account.username,
     usernameNormalized: account.usernameNormalized,
     email: account.email,

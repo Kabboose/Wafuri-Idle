@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import type { AuthState } from "./authState";
 import { createLoadingAuthState, hasEverAuthenticated, markAuthenticatedOnce } from "./authState";
 import { bootstrapAuth } from "./bootstrapAuth";
-import { apiPost, publicApiPost } from "../api/client";
-import { clearTokens, setTokens } from "./tokenStore";
+import { apiPost, AuthError, publicApiPost } from "../api/client";
+import { clearTokens, getRefreshToken, setTokens } from "./tokenStore";
 
 type AuthResponse = {
   accountId: string;
@@ -29,6 +29,8 @@ export type UseAuthResult = {
   createGuest: () => Promise<void>;
   login: (username: string, password: string) => Promise<void>;
   upgradeAccount: (username: string, password: string, email: string) => Promise<void>;
+  logout: () => Promise<void>;
+  logoutAll: () => Promise<void>;
   goToLogin: () => void;
   handleAuthFailure: () => void;
 };
@@ -45,6 +47,12 @@ export function useAuth(): UseAuthResult {
       status: "authenticated",
       accessToken: authResponse.accessToken
     });
+  };
+
+  /** Clears local auth state and routes the app back into the explicit unauthenticated flow. */
+  const transitionToSignedOutState = (forceLogin = false): void => {
+    clearTokens();
+    setAuthState(forceLogin || hasEverAuthenticated() ? { status: "needsLogin" } : { status: "needsSelection" });
   };
 
   useEffect(() => {
@@ -99,8 +107,37 @@ export function useAuth(): UseAuthResult {
 
   /** Clears stale auth state and routes the app back into the auth entry flow. */
   const handleAuthFailure = (): void => {
-    clearTokens();
-    setAuthState(hasEverAuthenticated() ? { status: "needsLogin" } : { status: "needsSelection" });
+    transitionToSignedOutState();
+  };
+
+  /** Logs out the current session, then always clears local auth state. */
+  const logout = async (): Promise<void> => {
+    const refreshToken = getRefreshToken();
+
+    try {
+      if (refreshToken) {
+        await publicApiPost("/auth/logout", {
+          refreshToken
+        });
+      }
+    } catch {
+      // Local sign-out must still succeed even if the logout request cannot reach the server.
+    } finally {
+      transitionToSignedOutState();
+    }
+  };
+
+  /** Logs out all sessions for the current account, then clears local auth state. */
+  const logoutAll = async (): Promise<void> => {
+    try {
+      await apiPost<{ revokedCount: number }>("/auth/logout-all");
+    } catch (error) {
+      if (!(error instanceof AuthError)) {
+        // Local sign-out still wins when the server-side revoke-all request fails.
+      }
+    } finally {
+      transitionToSignedOutState(true);
+    }
   };
 
   return {
@@ -108,6 +145,8 @@ export function useAuth(): UseAuthResult {
     createGuest,
     login,
     upgradeAccount,
+    logout,
+    logoutAll,
     goToLogin,
     handleAuthFailure
   };

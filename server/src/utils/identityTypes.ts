@@ -1,6 +1,7 @@
 export type AccountRecord = {
   id: string;
   type: "GUEST" | "REGISTERED";
+  sessionVersion: string;
   username: string | null;
   usernameNormalized: string | null;
   email: string | null;
@@ -12,6 +13,7 @@ export type AccountRecord = {
 
 export type CreateAccountInput = {
   type?: "GUEST" | "REGISTERED";
+  sessionVersion?: string;
   username?: string | null;
   usernameNormalized?: string | null;
   email?: string | null;
@@ -21,6 +23,7 @@ export type CreateAccountInput = {
 
 export type UpdateAccountInput = {
   type?: "GUEST" | "REGISTERED";
+  sessionVersion?: string;
   username?: string | null;
   usernameNormalized?: string | null;
   email?: string | null;

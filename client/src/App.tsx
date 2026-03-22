@@ -5,7 +5,8 @@ import { LoginScreen } from "./screens/LoginScreen";
 
 /** Renders the root application gate based purely on the resolved auth state. */
 export default function App() {
-  const { authState, createGuest, goToLogin, login, upgradeAccount, handleAuthFailure } = useAuth();
+  const { authState, createGuest, goToLogin, login, upgradeAccount, logout, logoutAll, handleAuthFailure } =
+    useAuth();
 
   switch (authState.status) {
     case "loading":
@@ -15,6 +16,13 @@ export default function App() {
     case "needsLogin":
       return <LoginScreen login={login} />;
     case "authenticated":
-      return <GameScreen onAuthFailure={handleAuthFailure} upgradeAccount={upgradeAccount} />;
+      return (
+        <GameScreen
+          onAuthFailure={handleAuthFailure}
+          upgradeAccount={upgradeAccount}
+          logout={logout}
+          logoutAll={logoutAll}
+        />
+      );
   }
 }

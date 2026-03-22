@@ -104,6 +104,14 @@ Current Auth/API Flows:
   - soft-revokes the current session and creates a rotated replacement session
   - returns a new access token and a new refresh token
   - logs refresh-token replay attempts and revokes remaining sessions for the account when replay is detected
+- `POST /auth/logout`
+  - accepts the current refresh token
+  - soft-revokes the matching active session if present
+  - remains safe to repeat even if the session is already missing or revoked
+- `POST /auth/logout-all`
+  - requires auth
+  - soft-revokes every active session for the authenticated account
+  - returns the number of revoked sessions
 - `POST /auth/upgrade`
   - requires auth
   - upgrades the current guest account into a registered account
@@ -173,6 +181,7 @@ Current Frontend State:
 - Stored access tokens are used for authenticated API requests.
 - The authenticated API client attempts refresh once on `401`, updates stored access and refresh token state atomically, and retries once.
 - Failed auth during gameplay routes the app back into the auth state machine instead of leaving stale game state mounted.
+- The auth hook exposes explicit `logout()` and `logoutAll()` actions.
 - The frontend currently includes:
   - entry screen
   - login screen
@@ -194,6 +203,7 @@ Out of Scope / Not Built Yet:
 - Registration/login polish beyond the current basic forms
 - Full guest-to-registered UX polish around upgrade success/error states
 - Account settings / profile management
+- Session management UX beyond the current basic logout controls
 
 Development Guidance:
 - Preserve strict layering.

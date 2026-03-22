@@ -8,16 +8,24 @@ type LoginScreenProps = {
 export function LoginScreen({ login }: LoginScreenProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
-    await login(username, password);
+
+    try {
+      await login(username, password);
+      setError(null);
+    } catch (loginError) {
+      setError(loginError instanceof Error ? loginError.message : "Login failed");
+    }
   };
 
   return (
     <main className="screen-shell">
       <section className="screen-card">
         <h1>Login</h1>
+        {error ? <p className="error-text">{error}</p> : null}
         <form onSubmit={(event) => void handleSubmit(event)}>
           <label>
             Username
