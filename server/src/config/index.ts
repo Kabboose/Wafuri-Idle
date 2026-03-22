@@ -24,6 +24,9 @@ export const GAME_CONFIG = {
     multiplierScale: "10000",
     maxOfflineProgressMs: 1000 * 60 * 60 * 24
   },
+  run: {
+    runEnergyCost: "10000000"
+  },
   player: {
     startingEnergy: "0",
     startingMaxEnergy: "100000000",
