@@ -2,6 +2,8 @@
 
 Current prototype for a World Flipper-inspired browser idle game built with TypeScript.
 
+Wafuri-Idle is being built as a server-authoritative idle game foundation with deterministic simulation, concurrency-safe progression, and a backend that can grow into async multiplayer systems over time.
+
 ## Structure
 
 - `server`: Express backend with stateless request handling, Prisma persistence, Redis-backed caching, JWT auth, and hashed refresh-token sessions
@@ -17,7 +19,7 @@ Backend layout:
 - `server/src/config`: environment-backed configuration
 - `server/src/utils`: shared pure helpers and serialization
 
-Game balance and feature toggles live in [server/src/config/index.ts](/home/alexzervas/gitrepos/Wafuri-Idle/server/src/config/index.ts) via `GAME_CONFIG` and `FEATURES`, so values can be rebalanced centrally and moved to DB-backed config later without rewriting services.
+Game balance and feature toggles live in [server/src/config/index.ts](server/src/config/index.ts) via `GAME_CONFIG` and `FEATURES`, so values can be rebalanced centrally and moved to DB-backed config later without rewriting services.
 
 ## Current Features
 
@@ -31,6 +33,23 @@ Game balance and feature toggles live in [server/src/config/index.ts](/home/alex
 - Access and refresh tokens are rotated through `POST /auth/refresh` using stored refresh-token sessions
 - The frontend uses an auth state machine instead of auto-creating a guest on startup
 - Players can log out the current session or revoke all active sessions from the game screen
+
+## Future Direction
+
+The current mana-based prototype is temporary scaffolding. The next gameplay phase shifts the project toward a more explicit loop:
+
+- idle Energy generation over time
+- short deterministic burst runs
+- rewards based on run outcomes such as damage, combos, and triggered effects
+- stronger team-synergy decisions instead of simple linear stat growth
+
+The short version is:
+
+- idle phase: build resources and prepare runs
+- active phase: trigger a short simulated run
+- result phase: evaluate output and grant rewards
+
+This is being designed so the same run outputs can later support async multiplayer systems such as guild-boss contributions, leaderboards, and shared progression without rewriting the core simulation model.
 
 ## Run
 
@@ -126,6 +145,47 @@ Available recipes:
 - `server`: run the backend dev server
 - `client`: run the frontend dev server
 - `run`: do the full local startup flow, then run server and client together
+
+## Contributing With AI
+
+AI-assisted contributions are welcome, but the repo has strong architectural constraints. Relevant guidance:
+
+- [AGENTS.md](AGENTS.md)
+- [PROJECT_CONTEXT.md](docs/PROJECT_CONTEXT.md)
+
+Key expectations for AI-generated changes:
+
+- preserve the request flow: Route → Controller → Service → DB
+- keep business logic in services, not routes or controllers
+- do not pass Express `req` or `res` into services
+- keep Prisma queries in the DB layer only
+- treat PostgreSQL as source of truth and Redis as cache only
+- keep game logic deterministic by passing `nowMs` explicitly
+- keep player mutations safe under optimistic locking and retries
+- do not move authoritative gameplay logic into the client
+
+Recommended workflow:
+
+1. Read the relevant files plus `AGENTS.md` before using an AI tool.
+2. Provide the AI with a narrow task, clear file boundaries, and expected behavior.
+3. Require an explanation of how the change respects determinism, layering, and concurrency-safety rules.
+4. Review the diff manually before merging or adopting it.
+5. Run `just test` or the narrowest relevant checks for the area changed.
+
+Good AI tasks:
+
+- adding small endpoints that follow the existing layering
+- writing or extending repository tests
+- refactoring duplicated controller or service code without changing behavior
+- documenting flows and constraints
+
+Bad AI tasks:
+
+- broad architectural rewrites without first understanding the current design
+- moving logic across layers for convenience
+- introducing client-authoritative gameplay calculations
+- changing API shapes casually
+- bypassing optimistic locking, transactions, or auth/session rules
 
 ## Git Hooks
 
