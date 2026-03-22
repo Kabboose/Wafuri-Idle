@@ -20,6 +20,7 @@ export const getPlayerStateController: RequestHandler = async (request, response
       {
         playerId,
         energy: playerState.energy,
+        maxEnergy: playerState.maxEnergy,
         energyPerSecond: playerState.energyPerSecond,
         teamPower: playerState.teamPower
       },
@@ -52,6 +53,7 @@ export const upgradePlayerController: RequestHandler = async (request, response,
       {
         playerId,
         energy: playerState.energy,
+        maxEnergy: playerState.maxEnergy,
         energyPerSecond: playerState.energyPerSecond,
         teamPower: playerState.teamPower
       },
@@ -84,6 +86,7 @@ export const tickPlayerController: RequestHandler = async (request, response, ne
       {
         playerId,
         energy: playerState.energy,
+        maxEnergy: playerState.maxEnergy,
         energyPerSecond: playerState.energyPerSecond,
         teamPower: playerState.teamPower
       },

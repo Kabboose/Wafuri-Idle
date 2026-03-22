@@ -35,6 +35,7 @@ export type PlayerRecord = {
   id: string;
   accountId: string;
   energy: string;
+  maxEnergy: string;
   energyPerSecond: string;
   teamPower: number;
   version: number;
@@ -46,6 +47,7 @@ export type PlayerRecord = {
 export type CreatePlayerInput = {
   accountId: string;
   energy: string;
+  maxEnergy: string;
   energyPerSecond: string;
   teamPower: number;
   version?: number;

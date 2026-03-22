@@ -8,6 +8,7 @@ const PLAYER_CACHE_TTL_SECONDS = 60;
 type CachedPlayerState = {
   id: string;
   energy: string;
+  maxEnergy: string;
   energyPerSecond: string;
   teamPower: number;
   version: number;
@@ -26,6 +27,7 @@ function serializeCachedPlayerState(state: PlayerState): CachedPlayerState {
   return {
     ...state,
     energy: stringifyFixed(state.energy),
+    maxEnergy: stringifyFixed(state.maxEnergy),
     energyPerSecond: stringifyFixed(state.energyPerSecond)
   };
 }
@@ -35,6 +37,7 @@ function deserializeCachedPlayerState(state: CachedPlayerState): PlayerState {
   return {
     ...state,
     energy: parseFixed(state.energy),
+    maxEnergy: parseFixed(state.maxEnergy),
     energyPerSecond: parseFixed(state.energyPerSecond)
   };
 }

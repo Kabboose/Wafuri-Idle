@@ -26,6 +26,7 @@ export const GAME_CONFIG = {
   },
   player: {
     startingEnergy: "0",
+    startingMaxEnergy: "100000000",
     startingTeamPower: 10
   }
 } as const;

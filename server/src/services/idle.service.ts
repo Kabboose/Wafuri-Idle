@@ -7,6 +7,11 @@ export function getEffectiveEnergyRate(player: Pick<PlayerState, "energyPerSecon
   return getEffectiveRate(player.energyPerSecond, player.teamPower);
 }
 
+/** Clamps energy to the player's current cap using bigint-safe comparisons only. */
+function clampEnergyToMax(energy: bigint, maxEnergy: bigint): bigint {
+  return energy > maxEnergy ? maxEnergy : energy;
+}
+
 /** Advances a player forward in time, capped by the configured offline progress limit. */
 export function progressPlayer(player: PlayerState, now: number): PlayerMutation {
   const elapsedMs = Math.min(
@@ -15,7 +20,11 @@ export function progressPlayer(player: PlayerState, now: number): PlayerMutation
   );
 
   return {
-    energy: player.energy + calculateEnergyGain(elapsedMs, player.energyPerSecond, player.teamPower),
+    energy: clampEnergyToMax(
+      player.energy + calculateEnergyGain(elapsedMs, player.energyPerSecond, player.teamPower),
+      player.maxEnergy
+    ),
+    maxEnergy: player.maxEnergy,
     energyPerSecond: player.energyPerSecond,
     teamPower: player.teamPower,
     lastUpdateTimestampMs: now

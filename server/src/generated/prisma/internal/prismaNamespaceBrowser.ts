@@ -93,6 +93,7 @@ export const PlayerScalarFieldEnum = {
   id: 'id',
   accountId: 'accountId',
   energy: 'energy',
+  maxEnergy: 'maxEnergy',
   energyPerSecond: 'energyPerSecond',
   teamPower: 'teamPower',
   version: 'version',

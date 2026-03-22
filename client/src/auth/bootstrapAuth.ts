@@ -6,6 +6,7 @@ export type PlayerState = {
   id: string;
   accountType: "GUEST" | "REGISTERED";
   energy: string;
+  maxEnergy: string;
   energyPerSecond: string;
   teamPower: number;
   lastUpdateTimestampMs: number;
