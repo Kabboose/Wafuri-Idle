@@ -11,6 +11,10 @@ default:
 doctor:
   {{nvm}} && node -v && npm -v && ~/.local/bin/just --version
 
+hooks-install:
+  git config --local core.hooksPath .githooks
+  chmod +x .githooks/pre-commit .githooks/pre-push
+
 check-docker:
   @command -v docker >/dev/null 2>&1 || (echo "docker is required for this recipe" && exit 1)
   @docker compose version >/dev/null 2>&1 || (echo "docker compose is required for this recipe" && exit 1)
@@ -54,7 +58,11 @@ prisma-migrate:
 build:
   {{nvm}} && npm run build
 
+lint:
+  {{nvm}} && npm run lint
+
 test:
+  just lint
   {{nvm}} && npm run test --workspace server
   {{nvm}} && npm run build --workspace client
 

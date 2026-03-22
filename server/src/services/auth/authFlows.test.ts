@@ -227,7 +227,7 @@ integrationTest("requireAuth rejects access tokens immediately after logout-all 
   const response = createMockResponse();
   let nextCalled = false;
 
-  await requireAuth(request, response as Parameters<typeof requireAuth>[1], () => {
+  await requireAuth(request, response as unknown as Parameters<typeof requireAuth>[1], () => {
     nextCalled = true;
   });
 

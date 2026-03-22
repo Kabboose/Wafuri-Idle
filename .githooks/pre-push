@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel)"
+cd "$ROOT_DIR"
+
+if command -v just >/dev/null 2>&1; then
+  just test
+elif [ -x "$HOME/.local/bin/just" ]; then
+  "$HOME/.local/bin/just" test
+else
+  echo "just is required to run the repo hooks"
+  exit 1
+fi

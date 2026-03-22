@@ -110,6 +110,7 @@ If `just` is not on your `PATH`, run it as:
 Available recipes:
 
 - `doctor`: verify Node, npm, and just are available
+- `hooks-install`: configure this repo to use the versioned Git hooks
 - `check-docker`: verify Docker and Docker Compose are available
 - `infra-up`: start PostgreSQL and Redis from `compose.yaml`
 - `wait-services`: wait for PostgreSQL and Redis to become ready
@@ -122,3 +123,46 @@ Available recipes:
 - `server`: run the backend dev server
 - `client`: run the frontend dev server
 - `run`: do the full local startup flow, then run server and client together
+
+## Git Hooks
+
+This repo includes versioned Git hooks under `.githooks`.
+
+Install them once per clone with:
+
+```bash
+just hooks-install
+```
+
+Hook behavior:
+
+- `pre-commit`: runs `just lint`
+- `pre-push`: runs `just test`
+
+## GitHub Enforcement
+
+Local hooks are useful for fast feedback, but the real enforcement should happen in GitHub.
+
+This repo now includes a GitHub Actions workflow at `.github/workflows/ci.yml` that runs:
+
+- lint
+- server auth tests
+- client build
+
+To enforce it for collaborators, enable branch protection on your main branch in GitHub:
+
+1. Go to `Settings` -> `Branches`
+2. Add a branch protection rule for `main`
+3. Enable:
+   - `Require a pull request before merging`
+   - `Require status checks to pass before merging`
+   - `Require branches to be up to date before merging` (recommended)
+4. Mark the `lint-and-test` job from the `CI` workflow as a required status check
+5. Optionally enable:
+   - `Restrict who can push to matching branches`
+   - `Do not allow bypassing the above settings`
+
+Recommended model:
+
+- local hooks: developer feedback
+- required GitHub checks: actual merge enforcement

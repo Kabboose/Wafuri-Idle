@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import type { AuthState } from "./authState";
 import { createLoadingAuthState, hasEverAuthenticated, markAuthenticatedOnce } from "./authState";
@@ -106,9 +106,9 @@ export function useAuth(): UseAuthResult {
   };
 
   /** Clears stale auth state and routes the app back into the auth entry flow. */
-  const handleAuthFailure = (): void => {
+  const handleAuthFailure = useCallback((): void => {
     transitionToSignedOutState();
-  };
+  }, []);
 
   /** Logs out the current session, then always clears local auth state. */
   const logout = async (): Promise<void> => {

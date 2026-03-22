@@ -92,7 +92,7 @@ export function GameScreen({
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, []);
+  }, [onAuthFailure]);
 
   const handleUpgrade = async () => {
     try {
