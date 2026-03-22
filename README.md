@@ -99,13 +99,7 @@ The frontend proxies REST calls to the backend on `http://localhost:3001`.
 
 ## Just Commands
 
-`just` is installed locally at `~/.local/bin/just` in this environment.
-
-If `just` is not on your `PATH`, run it as:
-
-```bash
-~/.local/bin/just <recipe>
-```
+This repo uses `just` for common local workflows.
 
 Available recipes:
 
@@ -138,31 +132,3 @@ Hook behavior:
 
 - `pre-commit`: runs `just lint`
 - `pre-push`: runs `just test`
-
-## GitHub Enforcement
-
-Local hooks are useful for fast feedback, but the real enforcement should happen in GitHub.
-
-This repo now includes a GitHub Actions workflow at `.github/workflows/ci.yml` that runs:
-
-- lint
-- server auth tests
-- client build
-
-To enforce it for collaborators, enable branch protection on your main branch in GitHub:
-
-1. Go to `Settings` -> `Branches`
-2. Add a branch protection rule for `main`
-3. Enable:
-   - `Require a pull request before merging`
-   - `Require status checks to pass before merging`
-   - `Require branches to be up to date before merging` (recommended)
-4. Mark the `lint-and-test` job from the `CI` workflow as a required status check
-5. Optionally enable:
-   - `Restrict who can push to matching branches`
-   - `Do not allow bypassing the above settings`
-
-Recommended model:
-
-- local hooks: developer feedback
-- required GitHub checks: actual merge enforcement
