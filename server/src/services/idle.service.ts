@@ -25,6 +25,8 @@ export function applyIdleEnergy(playerState: PlayerState, nowMs: number): Player
       playerState.maxEnergy
     ),
     maxEnergy: playerState.maxEnergy,
+    currency: playerState.currency,
+    progression: playerState.progression,
     energyPerSecond: playerState.energyPerSecond,
     teamPower: playerState.teamPower,
     lastUpdateTimestampMs: nowMs

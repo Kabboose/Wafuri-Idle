@@ -9,6 +9,8 @@ function createPlayerState(overrides: Partial<PlayerState> = {}): PlayerState {
     id: "player-1",
     energy: 0n,
     maxEnergy: 10000000n,
+    currency: 0n,
+    progression: 0n,
     energyPerSecond: 1000000n,
     teamPower: 10,
     version: 0,

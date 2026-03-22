@@ -3,7 +3,10 @@ import type { PlayerMutation } from "../utils/playerTypes.js";
 
 const RUN_ENERGY_COST = BigInt(GAME_CONFIG.run.runEnergyCost);
 
-type RunEligiblePlayerState = Pick<PlayerMutation, "energy" | "maxEnergy" | "energyPerSecond" | "teamPower" | "lastUpdateTimestampMs">;
+type RunEligiblePlayerState = Pick<
+  PlayerMutation,
+  "energy" | "maxEnergy" | "currency" | "progression" | "energyPerSecond" | "teamPower" | "lastUpdateTimestampMs"
+>;
 
 /** Returns whether the player has enough energy to pay the configured run cost. */
 export function canStartRun(playerState: Pick<RunEligiblePlayerState, "energy">): boolean {

@@ -18,6 +18,8 @@ export async function createGuestAccount(input: { now: Date }): Promise<GuestAcc
     player: {
       energy: GAME_CONFIG.player.startingEnergy,
       maxEnergy: GAME_CONFIG.player.startingMaxEnergy,
+      currency: "0",
+      progression: "0",
       energyPerSecond: GAME_CONFIG.idle.baseRate,
       teamPower: GAME_CONFIG.player.startingTeamPower,
       lastUpdateTimestampMs: input.now

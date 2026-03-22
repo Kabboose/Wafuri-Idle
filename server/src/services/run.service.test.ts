@@ -8,6 +8,8 @@ function createPlayerState(overrides: Partial<PlayerMutation> = {}): PlayerMutat
   return {
     energy: 10000000n,
     maxEnergy: 100000000n,
+    currency: 0n,
+    progression: 0n,
     energyPerSecond: 1000000n,
     teamPower: 10,
     lastUpdateTimestampMs: 0,

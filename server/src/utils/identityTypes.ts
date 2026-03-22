@@ -36,6 +36,8 @@ export type PlayerRecord = {
   accountId: string;
   energy: string;
   maxEnergy: string;
+  currency: string;
+  progression: string;
   energyPerSecond: string;
   teamPower: number;
   version: number;
@@ -48,6 +50,8 @@ export type CreatePlayerInput = {
   accountId: string;
   energy: string;
   maxEnergy: string;
+  currency: string;
+  progression: string;
   energyPerSecond: string;
   teamPower: number;
   version?: number;

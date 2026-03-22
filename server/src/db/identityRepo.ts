@@ -31,6 +31,8 @@ function mapPlayerRecord(player: {
   accountId: string;
   energy: string;
   maxEnergy: string;
+  currency: string;
+  progression: string;
   energyPerSecond: string;
   teamPower: number;
   version: number;
@@ -43,6 +45,8 @@ function mapPlayerRecord(player: {
     accountId: player.accountId,
     energy: player.energy,
     maxEnergy: player.maxEnergy,
+    currency: player.currency,
+    progression: player.progression,
     energyPerSecond: player.energyPerSecond,
     teamPower: player.teamPower,
     version: player.version,
@@ -95,6 +99,8 @@ export async function createGuestAccountIdentity(
         accountId: account.id,
         energy: input.player.energy,
         maxEnergy: input.player.maxEnergy,
+        currency: input.player.currency,
+        progression: input.player.progression,
         energyPerSecond: input.player.energyPerSecond,
         teamPower: input.player.teamPower,
         version: input.player.version ?? 0,

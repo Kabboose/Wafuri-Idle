@@ -35,6 +35,8 @@ model Player {
   accountId             String   @unique @db.Uuid
   energy                String   @default("0")
   maxEnergy             String   @default("100000000")
+  currency              String   @default("0")
+  progression           String   @default("0")
   energyPerSecond       String   @default("1000000")
   teamPower             Int      @default(10)
   version               Int      @default(0)

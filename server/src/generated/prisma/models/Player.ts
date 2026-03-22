@@ -41,6 +41,8 @@ export type PlayerMinAggregateOutputType = {
   accountId: string | null
   energy: string | null
   maxEnergy: string | null
+  currency: string | null
+  progression: string | null
   energyPerSecond: string | null
   teamPower: number | null
   version: number | null
@@ -54,6 +56,8 @@ export type PlayerMaxAggregateOutputType = {
   accountId: string | null
   energy: string | null
   maxEnergy: string | null
+  currency: string | null
+  progression: string | null
   energyPerSecond: string | null
   teamPower: number | null
   version: number | null
@@ -67,6 +71,8 @@ export type PlayerCountAggregateOutputType = {
   accountId: number
   energy: number
   maxEnergy: number
+  currency: number
+  progression: number
   energyPerSecond: number
   teamPower: number
   version: number
@@ -92,6 +98,8 @@ export type PlayerMinAggregateInputType = {
   accountId?: true
   energy?: true
   maxEnergy?: true
+  currency?: true
+  progression?: true
   energyPerSecond?: true
   teamPower?: true
   version?: true
@@ -105,6 +113,8 @@ export type PlayerMaxAggregateInputType = {
   accountId?: true
   energy?: true
   maxEnergy?: true
+  currency?: true
+  progression?: true
   energyPerSecond?: true
   teamPower?: true
   version?: true
@@ -118,6 +128,8 @@ export type PlayerCountAggregateInputType = {
   accountId?: true
   energy?: true
   maxEnergy?: true
+  currency?: true
+  progression?: true
   energyPerSecond?: true
   teamPower?: true
   version?: true
@@ -218,6 +230,8 @@ export type PlayerGroupByOutputType = {
   accountId: string
   energy: string
   maxEnergy: string
+  currency: string
+  progression: string
   energyPerSecond: string
   teamPower: number
   version: number
@@ -254,6 +268,8 @@ export type PlayerWhereInput = {
   accountId?: Prisma.UuidFilter<"Player"> | string
   energy?: Prisma.StringFilter<"Player"> | string
   maxEnergy?: Prisma.StringFilter<"Player"> | string
+  currency?: Prisma.StringFilter<"Player"> | string
+  progression?: Prisma.StringFilter<"Player"> | string
   energyPerSecond?: Prisma.StringFilter<"Player"> | string
   teamPower?: Prisma.IntFilter<"Player"> | number
   version?: Prisma.IntFilter<"Player"> | number
@@ -268,6 +284,8 @@ export type PlayerOrderByWithRelationInput = {
   accountId?: Prisma.SortOrder
   energy?: Prisma.SortOrder
   maxEnergy?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
+  progression?: Prisma.SortOrder
   energyPerSecond?: Prisma.SortOrder
   teamPower?: Prisma.SortOrder
   version?: Prisma.SortOrder
@@ -285,6 +303,8 @@ export type PlayerWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.PlayerWhereInput | Prisma.PlayerWhereInput[]
   energy?: Prisma.StringFilter<"Player"> | string
   maxEnergy?: Prisma.StringFilter<"Player"> | string
+  currency?: Prisma.StringFilter<"Player"> | string
+  progression?: Prisma.StringFilter<"Player"> | string
   energyPerSecond?: Prisma.StringFilter<"Player"> | string
   teamPower?: Prisma.IntFilter<"Player"> | number
   version?: Prisma.IntFilter<"Player"> | number
@@ -299,6 +319,8 @@ export type PlayerOrderByWithAggregationInput = {
   accountId?: Prisma.SortOrder
   energy?: Prisma.SortOrder
   maxEnergy?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
+  progression?: Prisma.SortOrder
   energyPerSecond?: Prisma.SortOrder
   teamPower?: Prisma.SortOrder
   version?: Prisma.SortOrder
@@ -320,6 +342,8 @@ export type PlayerScalarWhereWithAggregatesInput = {
   accountId?: Prisma.UuidWithAggregatesFilter<"Player"> | string
   energy?: Prisma.StringWithAggregatesFilter<"Player"> | string
   maxEnergy?: Prisma.StringWithAggregatesFilter<"Player"> | string
+  currency?: Prisma.StringWithAggregatesFilter<"Player"> | string
+  progression?: Prisma.StringWithAggregatesFilter<"Player"> | string
   energyPerSecond?: Prisma.StringWithAggregatesFilter<"Player"> | string
   teamPower?: Prisma.IntWithAggregatesFilter<"Player"> | number
   version?: Prisma.IntWithAggregatesFilter<"Player"> | number
@@ -332,6 +356,8 @@ export type PlayerCreateInput = {
   id?: string
   energy?: string
   maxEnergy?: string
+  currency?: string
+  progression?: string
   energyPerSecond?: string
   teamPower?: number
   version?: number
@@ -346,6 +372,8 @@ export type PlayerUncheckedCreateInput = {
   accountId: string
   energy?: string
   maxEnergy?: string
+  currency?: string
+  progression?: string
   energyPerSecond?: string
   teamPower?: number
   version?: number
@@ -358,6 +386,8 @@ export type PlayerUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   energy?: Prisma.StringFieldUpdateOperationsInput | string
   maxEnergy?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  progression?: Prisma.StringFieldUpdateOperationsInput | string
   energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
@@ -372,6 +402,8 @@ export type PlayerUncheckedUpdateInput = {
   accountId?: Prisma.StringFieldUpdateOperationsInput | string
   energy?: Prisma.StringFieldUpdateOperationsInput | string
   maxEnergy?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  progression?: Prisma.StringFieldUpdateOperationsInput | string
   energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
@@ -385,6 +417,8 @@ export type PlayerCreateManyInput = {
   accountId: string
   energy?: string
   maxEnergy?: string
+  currency?: string
+  progression?: string
   energyPerSecond?: string
   teamPower?: number
   version?: number
@@ -397,6 +431,8 @@ export type PlayerUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   energy?: Prisma.StringFieldUpdateOperationsInput | string
   maxEnergy?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  progression?: Prisma.StringFieldUpdateOperationsInput | string
   energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
@@ -410,6 +446,8 @@ export type PlayerUncheckedUpdateManyInput = {
   accountId?: Prisma.StringFieldUpdateOperationsInput | string
   energy?: Prisma.StringFieldUpdateOperationsInput | string
   maxEnergy?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  progression?: Prisma.StringFieldUpdateOperationsInput | string
   energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
@@ -428,6 +466,8 @@ export type PlayerCountOrderByAggregateInput = {
   accountId?: Prisma.SortOrder
   energy?: Prisma.SortOrder
   maxEnergy?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
+  progression?: Prisma.SortOrder
   energyPerSecond?: Prisma.SortOrder
   teamPower?: Prisma.SortOrder
   version?: Prisma.SortOrder
@@ -446,6 +486,8 @@ export type PlayerMaxOrderByAggregateInput = {
   accountId?: Prisma.SortOrder
   energy?: Prisma.SortOrder
   maxEnergy?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
+  progression?: Prisma.SortOrder
   energyPerSecond?: Prisma.SortOrder
   teamPower?: Prisma.SortOrder
   version?: Prisma.SortOrder
@@ -459,6 +501,8 @@ export type PlayerMinOrderByAggregateInput = {
   accountId?: Prisma.SortOrder
   energy?: Prisma.SortOrder
   maxEnergy?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
+  progression?: Prisma.SortOrder
   energyPerSecond?: Prisma.SortOrder
   teamPower?: Prisma.SortOrder
   version?: Prisma.SortOrder
@@ -516,6 +560,8 @@ export type PlayerCreateWithoutAccountInput = {
   id?: string
   energy?: string
   maxEnergy?: string
+  currency?: string
+  progression?: string
   energyPerSecond?: string
   teamPower?: number
   version?: number
@@ -528,6 +574,8 @@ export type PlayerUncheckedCreateWithoutAccountInput = {
   id?: string
   energy?: string
   maxEnergy?: string
+  currency?: string
+  progression?: string
   energyPerSecond?: string
   teamPower?: number
   version?: number
@@ -556,6 +604,8 @@ export type PlayerUpdateWithoutAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   energy?: Prisma.StringFieldUpdateOperationsInput | string
   maxEnergy?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  progression?: Prisma.StringFieldUpdateOperationsInput | string
   energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
@@ -568,6 +618,8 @@ export type PlayerUncheckedUpdateWithoutAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   energy?: Prisma.StringFieldUpdateOperationsInput | string
   maxEnergy?: Prisma.StringFieldUpdateOperationsInput | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  progression?: Prisma.StringFieldUpdateOperationsInput | string
   energyPerSecond?: Prisma.StringFieldUpdateOperationsInput | string
   teamPower?: Prisma.IntFieldUpdateOperationsInput | number
   version?: Prisma.IntFieldUpdateOperationsInput | number
@@ -583,6 +635,8 @@ export type PlayerSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   accountId?: boolean
   energy?: boolean
   maxEnergy?: boolean
+  currency?: boolean
+  progression?: boolean
   energyPerSecond?: boolean
   teamPower?: boolean
   version?: boolean
@@ -597,6 +651,8 @@ export type PlayerSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   accountId?: boolean
   energy?: boolean
   maxEnergy?: boolean
+  currency?: boolean
+  progression?: boolean
   energyPerSecond?: boolean
   teamPower?: boolean
   version?: boolean
@@ -611,6 +667,8 @@ export type PlayerSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   accountId?: boolean
   energy?: boolean
   maxEnergy?: boolean
+  currency?: boolean
+  progression?: boolean
   energyPerSecond?: boolean
   teamPower?: boolean
   version?: boolean
@@ -625,6 +683,8 @@ export type PlayerSelectScalar = {
   accountId?: boolean
   energy?: boolean
   maxEnergy?: boolean
+  currency?: boolean
+  progression?: boolean
   energyPerSecond?: boolean
   teamPower?: boolean
   version?: boolean
@@ -633,7 +693,7 @@ export type PlayerSelectScalar = {
   updatedAt?: boolean
 }
 
-export type PlayerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "accountId" | "energy" | "maxEnergy" | "energyPerSecond" | "teamPower" | "version" | "lastUpdateTimestampMs" | "createdAt" | "updatedAt", ExtArgs["result"]["player"]>
+export type PlayerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "accountId" | "energy" | "maxEnergy" | "currency" | "progression" | "energyPerSecond" | "teamPower" | "version" | "lastUpdateTimestampMs" | "createdAt" | "updatedAt", ExtArgs["result"]["player"]>
 export type PlayerInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   account?: boolean | Prisma.AccountDefaultArgs<ExtArgs>
 }
@@ -654,6 +714,8 @@ export type $PlayerPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     accountId: string
     energy: string
     maxEnergy: string
+    currency: string
+    progression: string
     energyPerSecond: string
     teamPower: number
     version: number
@@ -1088,6 +1150,8 @@ export interface PlayerFieldRefs {
   readonly accountId: Prisma.FieldRef<"Player", 'String'>
   readonly energy: Prisma.FieldRef<"Player", 'String'>
   readonly maxEnergy: Prisma.FieldRef<"Player", 'String'>
+  readonly currency: Prisma.FieldRef<"Player", 'String'>
+  readonly progression: Prisma.FieldRef<"Player", 'String'>
   readonly energyPerSecond: Prisma.FieldRef<"Player", 'String'>
   readonly teamPower: Prisma.FieldRef<"Player", 'Int'>
   readonly version: Prisma.FieldRef<"Player", 'Int'>

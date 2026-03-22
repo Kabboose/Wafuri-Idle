@@ -1,0 +1,3 @@
+ALTER TABLE "players"
+ADD COLUMN "currency" TEXT NOT NULL DEFAULT '0',
+ADD COLUMN "progression" TEXT NOT NULL DEFAULT '0';

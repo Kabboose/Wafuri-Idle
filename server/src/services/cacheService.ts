@@ -9,6 +9,8 @@ type CachedPlayerState = {
   id: string;
   energy: string;
   maxEnergy: string;
+  currency: string;
+  progression: string;
   energyPerSecond: string;
   teamPower: number;
   version: number;
@@ -28,6 +30,8 @@ function serializeCachedPlayerState(state: PlayerState): CachedPlayerState {
     ...state,
     energy: stringifyFixed(state.energy),
     maxEnergy: stringifyFixed(state.maxEnergy),
+    currency: stringifyFixed(state.currency),
+    progression: stringifyFixed(state.progression),
     energyPerSecond: stringifyFixed(state.energyPerSecond)
   };
 }
@@ -38,6 +42,8 @@ function deserializeCachedPlayerState(state: CachedPlayerState): PlayerState {
     ...state,
     energy: parseFixed(state.energy),
     maxEnergy: parseFixed(state.maxEnergy),
+    currency: parseFixed(state.currency),
+    progression: parseFixed(state.progression),
     energyPerSecond: parseFixed(state.energyPerSecond)
   };
 }

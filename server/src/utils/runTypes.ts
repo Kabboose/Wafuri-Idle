@@ -8,6 +8,14 @@ export interface PlayerCombatStats {
   critChance: number;
 }
 
+/** Team-provided combat configuration used to derive a single run simulation input. */
+export interface TeamConfig {
+  power: BigIntString;
+  speed: number;
+  critChance: number;
+  runDurationMs?: number;
+}
+
 /** Plain input required to simulate a single deterministic run. */
 export interface RunInput {
   playerId: string;

@@ -3,6 +3,8 @@ export type SerializedPlayerState = {
   accountType: "GUEST" | "REGISTERED";
   energy: string;
   maxEnergy: string;
+  currency: string;
+  progression: string;
   energyPerSecond: string;
   teamPower: number;
   lastUpdateTimestampMs: number;
@@ -14,6 +16,8 @@ export type PlayerState = {
   id: string;
   energy: bigint;
   maxEnergy: bigint;
+  currency: bigint;
+  progression: bigint;
   energyPerSecond: bigint;
   teamPower: number;
   version: number;
@@ -25,6 +29,8 @@ export type PlayerState = {
 export type PlayerMutation = {
   energy: bigint;
   maxEnergy: bigint;
+  currency: bigint;
+  progression: bigint;
   energyPerSecond: bigint;
   teamPower: number;
   lastUpdateTimestampMs: number;

@@ -10,6 +10,8 @@ function mapPlayerRecord(player: Player): PlayerState {
     id: player.id,
     energy: parseFixed(player.energy),
     maxEnergy: parseFixed(player.maxEnergy),
+    currency: parseFixed(player.currency),
+    progression: parseFixed(player.progression),
     energyPerSecond: parseFixed(player.energyPerSecond),
     teamPower: player.teamPower,
     version: player.version,
@@ -24,6 +26,8 @@ function mapMutationToUpdate(mutation: PlayerMutation): Prisma.PlayerUpdateInput
   return {
     energy: stringifyFixed(mutation.energy),
     maxEnergy: stringifyFixed(mutation.maxEnergy),
+    currency: stringifyFixed(mutation.currency),
+    progression: stringifyFixed(mutation.progression),
     energyPerSecond: stringifyFixed(mutation.energyPerSecond),
     teamPower: mutation.teamPower,
     lastUpdateTimestampMs: new Date(mutation.lastUpdateTimestampMs)

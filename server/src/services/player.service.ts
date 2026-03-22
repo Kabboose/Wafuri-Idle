@@ -12,6 +12,8 @@ function serializePlayer(player: PlayerState, accountType: "GUEST" | "REGISTERED
     accountType,
     energy: stringifyFixed(player.energy),
     maxEnergy: stringifyFixed(player.maxEnergy),
+    currency: stringifyFixed(player.currency),
+    progression: stringifyFixed(player.progression),
     energyPerSecond: stringifyFixed(player.energyPerSecond),
     teamPower: player.teamPower,
     lastUpdateTimestampMs: player.lastUpdateTimestampMs,
