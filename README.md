@@ -9,7 +9,21 @@ Wafuri-Idle is being built as a server-authoritative idle game foundation with d
 - Player state persists in PostgreSQL instead of process memory
 - Redis stores player cache entries
 - Every authenticated request recalculates idle energy from `lastUpdateTimestampMs`
+- Energy accumulation is capped by `maxEnergy`
 - Upgrades increase both `teamPower` and `energyPerSecond`
+- Players can spend energy to trigger deterministic runs through `POST /run`
+- Run rewards currently grant currency from damage and progression from combo
+- Run playback currently includes:
+  - arena
+  - entities
+  - ordered events
+- Playback events currently include:
+  - phase markers
+  - ball paths
+  - collisions
+  - damage events
+  - sparse trigger events
+- The frontend now renders a replay view from the server playback timeline
 - Guest accounts can be created explicitly from the entry screen
 - Registered accounts can log in with username/password
 - Guest accounts can be upgraded in place via the in-game `Save Progress` flow
@@ -34,6 +48,7 @@ The current energy-based prototype is temporary scaffolding. The next gameplay p
 - idle Energy generation over time
 - short deterministic burst runs
 - rewards based on run outcomes such as damage, combos, and triggered effects
+- playback-driven visual replay from server-authored timelines
 - stronger team-synergy decisions instead of simple linear stat growth
 
 The short version is:
@@ -132,7 +147,7 @@ The frontend proxies REST calls to the backend on `http://localhost:3001`.
 
 ## OpenAPI Foundation
 
-The repo now includes an initial generated OpenAPI contract at `openapi/openapi.json`.
+The repo now includes a generated OpenAPI contract at `openapi/openapi.json`.
 
 Source of truth:
 
@@ -144,6 +159,8 @@ Current scope:
 - current player gameplay endpoints
 - standard success/error envelopes
 - current run playback contract
+- generated client-safe types
+- generated typed client request wrappers and path constants
 
 Useful commands:
 
@@ -158,7 +175,7 @@ When the server is running, the same document is also available at:
 http://localhost:3001/openapi.json
 ```
 
-This is intentionally a foundation only. The contract is generated and validated, but client type generation and deeper schema-first runtime integration are still future work.
+This is intentionally still a foundation layer, but it now includes generated client contract artifacts and drift checks in the normal repo workflow.
 
 ## Structure
 

@@ -105,21 +105,72 @@ UI includes:
 
 Current Gameplay Foundation (PROTOTYPE)
 
-- Idle resource generation exists (temporary energy-based system)
+- Idle resource generation exists using Energy
+- Energy accumulation is capped by `maxEnergy`
 - Upgrade system affects generation and power
+- Run entry cost exists through `runEnergyCost`
+- Reward output currently grants:
+  - currency from damage
+  - progression from combo
 - Current authenticated gameplay endpoints are:
   - `GET /state` applies idle progress only
   - `POST /tick` applies idle progress only
   - `POST /upgrade` applies idle progress once, then upgrade once
+  - `POST /run` applies idle progress, checks affordability, spends energy, simulates a deterministic run, calculates rewards, and persists the updated player state
 - Player state:
   - energy
+  - maxEnergy
   - energyPerSecond
+  - currency
+  - progression
   - teamPower
   - version
   - lastUpdateTimestampMs
 
-This system is now considered **temporary scaffolding**.
-The future Energy / Run Charges loop below is target direction only, not current live behavior.
+Deterministic run simulation currently implemented:
+- fixed-duration runs
+- seeded RNG
+- summary output:
+  - totalDamage
+  - comboCount
+  - summary triggers
+- playback output:
+  - arena snapshot
+  - deterministic entity list
+  - ordered event timeline
+
+Playback currently supports:
+- one ball
+- a small deterministic enemy set
+- phase events
+- straight-line ball path segments
+- collision events
+- damage events
+- sparse trigger events
+
+Current playback trigger kinds:
+- IMPACT_BURST
+- COMBO_MILESTONE
+- ENEMY_DEFEATED
+- SKILL_ACTIVATED
+- CHAIN_STARTED
+- CHAIN_EXTENDED
+- RUN_FINISHER
+
+Frontend replay currently maps the server playback timeline into:
+- ball motion
+- world-space impact cues
+- damage popups
+- rolling total damage
+- combo display
+- sparse UI trigger banners
+- end-of-run summary reveal
+
+This system is still considered **foundational scaffolding**, but the current live loop is no longer target direction only:
+- idle energy accumulation
+- deterministic run trigger
+- server-calculated rewards
+- playback-driven frontend replay
 
 ---
 
@@ -147,7 +198,7 @@ Trigger short “runs” where the team auto-combats and chains abilities.
 
 Primary resources:
 - Energy (generated over time)
-- Run Charges (consume to start runs)
+- run entry cost / future run-charge style gating
 
 Primary decisions:
 - when to trigger runs
@@ -172,6 +223,7 @@ Primary decisions:
   - damage dealt
   - combo count
   - triggered effects
+  - playback timeline for replay
 - rewards granted based on performance
 
 ---
@@ -206,6 +258,7 @@ Run output must be structured:
 - damage
 - combo
 - triggers
+- playback timeline
 
 This enables:
 - async co-op (guild boss)
@@ -226,24 +279,18 @@ Phase approach:
 
 # 🔜 NEXT IMPLEMENTATION PHASE
 
-Phase 4a: Run Simulation System
+Current status:
+- deterministic run simulation exists
+- reward calculation exists
+- `/run` orchestration exists
+- playback timeline exists
+- frontend replay mapping exists
 
-Do NOT build:
-- full inventory
-- full gacha
-- multiplayer
-
-Build:
-
-- deterministic run simulation service:
-  - `runPlayer(playerState, teamConfig, seed, nowMs)`
-
-- minimal result model:
-  - damage
-  - combo
-  - triggers
-
-- reward pipeline based on run results
+Next likely expansion areas:
+- replace temporary client-provided combat input with server-authoritative team state
+- extend natural trigger emission as more gameplay systems appear
+- improve replay presentation without moving simulation logic client-side
+- build richer team/synergy systems on top of the current deterministic run contract
 
 ---
 
