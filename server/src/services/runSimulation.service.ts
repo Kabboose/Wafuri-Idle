@@ -1,5 +1,15 @@
 import { GAME_CONFIG } from "../config/index.js";
-import type { BallPathEvent, PhaseEvent, PlaybackEntity, RunInput, RunPlayback, RunResult, RunTriggerEvent } from "../utils/runTypes.js";
+import type {
+  BallPathEvent,
+  CollisionEvent,
+  PhaseEvent,
+  PlaybackEntity,
+  PlaybackEvent,
+  RunInput,
+  RunPlayback,
+  RunResult,
+  RunTriggerEvent
+} from "../utils/runTypes.js";
 
 const DEFAULT_RUN_DURATION_MS = GAME_CONFIG.run.defaultDurationMs;
 const BASE_CRIT_DAMAGE_MULTIPLIER = BigInt(GAME_CONFIG.run.baseCritDamageMultiplier);
@@ -65,8 +75,13 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
   ];
 }
 
-/** Builds simple deterministic straight-line ball path segments in normalized space. */
-function createBallPathEvents(entities: PlaybackEntity[], durationMs: number, hitCount: number): BallPathEvent[] {
+/** Clamps normalized coordinates into the supported playback space. */
+function clampNormalized(value: number): number {
+  return Math.min(Math.max(value, 0), 1);
+}
+
+/** Builds simple deterministic straight-line ball path and collision events in normalized space. */
+function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hitCount: number): PlaybackEvent[] {
   const ballEntity = entities.find((entity) => entity.kind === "BALL");
   const enemyEntity = entities.find((entity) => entity.kind === "ENEMY");
 
@@ -74,33 +89,63 @@ function createBallPathEvents(entities: PlaybackEntity[], durationMs: number, hi
     return [];
   }
 
-  const segmentCount = Math.min(Math.max(hitCount, 10), 30);
+  const motionHitCount = Math.min(Math.max(hitCount, 5), 15);
+  const segmentCount = motionHitCount * 2;
   const segmentDurationMs = Math.max(Math.floor(durationMs / segmentCount), 1);
-  const reboundX = Math.min(Math.max(1 - enemyEntity.spawnX, 0), 1);
-  const reboundY = Math.min(enemyEntity.spawnY + 0.05, 0.95);
-  const waypoints = [
-    { x: ballEntity.spawnX, y: ballEntity.spawnY },
-    { x: enemyEntity.spawnX, y: enemyEntity.spawnY },
-    { x: reboundX, y: reboundY }
-  ];
-  const events: BallPathEvent[] = [];
+  const events: PlaybackEvent[] = [];
+  let currentX = ballEntity.spawnX;
+  let currentY = ballEntity.spawnY;
 
-  for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
-    const fromPoint = waypoints[segmentIndex % waypoints.length];
-    const toPoint = waypoints[(segmentIndex + 1) % waypoints.length];
-    const tStart = segmentIndex * segmentDurationMs;
-    const tEnd = segmentIndex === segmentCount - 1 ? durationMs : Math.min((segmentIndex + 1) * segmentDurationMs, durationMs);
+  for (let hitIndex = 0; hitIndex < motionHitCount; hitIndex += 1) {
+    const approachStart = hitIndex * 2 * segmentDurationMs;
+    const approachEnd = hitIndex === motionHitCount - 1
+      ? Math.min(approachStart + segmentDurationMs, durationMs)
+      : Math.min((hitIndex * 2 + 1) * segmentDurationMs, durationMs);
+    const reboundStart = approachEnd;
+    const reboundEnd = hitIndex === motionHitCount - 1
+      ? durationMs
+      : Math.min((hitIndex * 2 + 2) * segmentDurationMs, durationMs);
+    const reboundDirection = hitIndex % 2 === 0 ? -1 : 1;
+    const reboundX = clampNormalized(enemyEntity.spawnX + reboundDirection * 0.18);
+    const reboundY = clampNormalized(enemyEntity.spawnY - 0.08 + (hitIndex % 3) * 0.04);
 
-    events.push({
+    const approachEvent: BallPathEvent = {
       kind: "BALL_PATH",
-      tStart,
-      tEnd,
+      tStart: approachStart,
+      tEnd: approachEnd,
       entityId: ballEntity.id,
-      fromX: fromPoint.x,
-      fromY: fromPoint.y,
-      toX: toPoint.x,
-      toY: toPoint.y
-    });
+      fromX: currentX,
+      fromY: currentY,
+      toX: enemyEntity.spawnX,
+      toY: enemyEntity.spawnY
+    };
+    const collisionEvent: CollisionEvent = {
+      kind: "COLLISION",
+      timestampMs: approachEnd,
+      sourceEntityId: ballEntity.id,
+      targetEntityId: enemyEntity.id,
+      collisionKind: "BALL_ENEMY",
+      x: enemyEntity.spawnX,
+      y: enemyEntity.spawnY
+    };
+
+    events.push(approachEvent, collisionEvent);
+
+    if (reboundStart < reboundEnd) {
+      events.push({
+        kind: "BALL_PATH",
+        tStart: reboundStart,
+        tEnd: reboundEnd,
+        entityId: ballEntity.id,
+        fromX: enemyEntity.spawnX,
+        fromY: enemyEntity.spawnY,
+        toX: reboundX,
+        toY: reboundY
+      });
+    }
+
+    currentX = reboundX;
+    currentY = reboundY;
   }
 
   return events;
@@ -109,7 +154,7 @@ function createBallPathEvents(entities: PlaybackEntity[], durationMs: number, hi
 /** Builds the minimal deterministic playback payload for a simulated run. */
 function createPlayback(seed: string, durationMs: number, hitCount: number): RunPlayback {
   const entities = createPlaybackEntities(seed);
-  const pathEvents = createBallPathEvents(entities, durationMs, hitCount);
+  const motionEvents = createMotionTimeline(entities, durationMs, hitCount);
   const phaseEvents: PhaseEvent[] = [
     {
       kind: "PHASE",
@@ -131,7 +176,7 @@ function createPlayback(seed: string, durationMs: number, hitCount: number): Run
       zones: []
     },
     entities,
-    events: [phaseEvents[0], ...pathEvents, phaseEvents[1]]
+    events: [phaseEvents[0], ...motionEvents, phaseEvents[1]]
   };
 }
 

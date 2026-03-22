@@ -65,7 +65,8 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
     timestampMs: 10_000,
     phase: "FINISH"
   });
-  assert.equal(result.runResult.playback?.events.filter((event) => event.kind === "BALL_PATH").length, 10);
+  assert.equal(result.runResult.playback?.events.filter((event) => event.kind === "BALL_PATH").length, 20);
+  assert.equal(result.runResult.playback?.events.filter((event) => event.kind === "COLLISION").length, 10);
   assert.equal(result.rewardResult.grantedResources.currency, "20000");
   assert.equal(result.rewardResult.grantedResources.progression, "10000000");
   assert.equal(result.player.energy, "22000000");

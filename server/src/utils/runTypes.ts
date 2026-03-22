@@ -67,6 +67,7 @@ export interface CollisionEvent {
   timestampMs: number;
   sourceEntityId: string;
   targetEntityId: string;
+  collisionKind: "BALL_ENEMY";
   x: number;
   y: number;
 }

@@ -70,12 +70,24 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   });
 
   const ballPathEvents = result.playback?.events.filter((event) => event.kind === "BALL_PATH") ?? [];
-  assert.equal(ballPathEvents.length, 10);
+  const collisionEvents = result.playback?.events.filter((event) => event.kind === "COLLISION") ?? [];
+  assert.equal(ballPathEvents.length, 20);
+  assert.equal(collisionEvents.length, 10);
   assert.ok(ballPathEvents.every((event) => event.tStart >= 0 && event.tEnd <= 10_000 && event.tStart < event.tEnd));
   assert.ok(ballPathEvents.every((event) => event.fromX >= 0 && event.fromX <= 1));
   assert.ok(ballPathEvents.every((event) => event.fromY >= 0 && event.fromY <= 1));
   assert.ok(ballPathEvents.every((event) => event.toX >= 0 && event.toX <= 1));
   assert.ok(ballPathEvents.every((event) => event.toY >= 0 && event.toY <= 1));
+  assert.ok(collisionEvents.every((event) => event.x >= 0 && event.x <= 1));
+  assert.ok(collisionEvents.every((event) => event.y >= 0 && event.y <= 1));
+  assert.ok(collisionEvents.every((event) => event.collisionKind === "BALL_ENEMY"));
+
+  const inboundPathEvents = ballPathEvents.filter((event) => event.toX === result.playback?.entities[1]?.spawnX && event.toY === result.playback?.entities[1]?.spawnY);
+  assert.equal(inboundPathEvents.length, 10);
+  assert.deepEqual(
+    collisionEvents.map((event) => event.timestampMs),
+    inboundPathEvents.map((event) => event.tEnd)
+  );
 });
 
 test("simulateRun applies crit logic deterministically", () => {
