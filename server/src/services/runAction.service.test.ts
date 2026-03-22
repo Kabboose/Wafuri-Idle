@@ -50,3 +50,39 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
   assert.equal(playerIdentity?.currency, "20000");
   assert.equal(playerIdentity?.progression, "10000000");
 });
+
+integrationTest("runPlayerAction allows only one parallel run when energy is sufficient for exactly one cost", async () => {
+  const guest = await createGuestAccount({
+    now: new Date(2_000)
+  });
+
+  await prisma.player.update({
+    where: { id: guest.playerId },
+    data: {
+      energy: "10000000"
+    }
+  });
+
+  const runInput = {
+    power: "1000",
+    speed: 1,
+    critChance: 10_000,
+    runDurationMs: 10_000
+  } as const;
+
+  const [firstResult, secondResult] = await Promise.allSettled([
+    runPlayerAction(guest.accountId, runInput, 2_000),
+    runPlayerAction(guest.accountId, runInput, 2_000)
+  ]);
+
+  const fulfilledResults = [firstResult, secondResult].filter((result) => result.status === "fulfilled");
+  const rejectedResults = [firstResult, secondResult].filter((result) => result.status === "rejected");
+  const playerIdentity = await findPlayerIdentityByAccountId(guest.accountId);
+
+  assert.equal(fulfilledResults.length, 1);
+  assert.equal(rejectedResults.length, 1);
+  assert.match((rejectedResults[0] as PromiseRejectedResult).reason.message, /Not enough energy to start run/);
+  assert.equal(playerIdentity?.energy, "0");
+  assert.equal(playerIdentity?.currency, "20000");
+  assert.equal(playerIdentity?.progression, "10000000");
+});
