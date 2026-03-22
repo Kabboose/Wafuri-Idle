@@ -2,6 +2,7 @@ import { GAME_CONFIG } from "../config/index.js";
 import type {
   BallPathEvent,
   CollisionEvent,
+  DamageEvent,
   PhaseEvent,
   PlaybackEntity,
   PlaybackEvent,
@@ -15,6 +16,13 @@ const DEFAULT_RUN_DURATION_MS = GAME_CONFIG.run.defaultDurationMs;
 const BASE_CRIT_DAMAGE_MULTIPLIER = BigInt(GAME_CONFIG.run.baseCritDamageMultiplier);
 const BASE_CRIT_CHANCE_SCALE = GAME_CONFIG.run.baseCritChanceScale;
 const SPEED_SCALE = GAME_CONFIG.run.speedScale;
+
+type SimulatedHit = {
+  damage: bigint;
+  comboAfter: number;
+  isCrit: boolean;
+  timestampMs: number;
+};
 
 /** Hashes the provided seed string into a deterministic 32-bit unsigned integer. */
 function hashSeed(seed: string): number {
@@ -80,23 +88,24 @@ function clampNormalized(value: number): number {
   return Math.min(Math.max(value, 0), 1);
 }
 
-/** Builds simple deterministic straight-line ball path and collision events in normalized space. */
-function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hitCount: number): PlaybackEvent[] {
+/** Builds simple deterministic straight-line ball path, collision, and damage events in normalized space. */
+function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hits: SimulatedHit[]): PlaybackEvent[] {
   const ballEntity = entities.find((entity) => entity.kind === "BALL");
   const enemyEntity = entities.find((entity) => entity.kind === "ENEMY");
 
-  if (!ballEntity || !enemyEntity || durationMs <= 0) {
+  if (!ballEntity || !enemyEntity || durationMs <= 0 || hits.length === 0) {
     return [];
   }
 
-  const motionHitCount = Math.min(Math.max(hitCount, 5), 15);
+  const motionHitCount = hits.length;
   const segmentCount = motionHitCount * 2;
   const segmentDurationMs = Math.max(Math.floor(durationMs / segmentCount), 1);
   const events: PlaybackEvent[] = [];
   let currentX = ballEntity.spawnX;
   let currentY = ballEntity.spawnY;
 
-  for (let hitIndex = 0; hitIndex < motionHitCount; hitIndex += 1) {
+  for (let hitIndex = 0; hitIndex < hits.length; hitIndex += 1) {
+    const hit = hits[hitIndex];
     const approachStart = hitIndex * 2 * segmentDurationMs;
     const approachEnd = hitIndex === motionHitCount - 1
       ? Math.min(approachStart + segmentDurationMs, durationMs)
@@ -128,8 +137,19 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
       x: enemyEntity.spawnX,
       y: enemyEntity.spawnY
     };
+    const damageEvent: DamageEvent = {
+      kind: "DAMAGE",
+      timestampMs: approachEnd,
+      sourceEntityId: ballEntity.id,
+      targetEntityId: enemyEntity.id,
+      x: enemyEntity.spawnX,
+      y: enemyEntity.spawnY,
+      damage: hit.damage.toString(),
+      comboAfter: hit.comboAfter,
+      isCrit: hit.isCrit
+    };
 
-    events.push(approachEvent, collisionEvent);
+    events.push(approachEvent, collisionEvent, damageEvent);
 
     if (reboundStart < reboundEnd) {
       events.push({
@@ -152,9 +172,9 @@ function createMotionTimeline(entities: PlaybackEntity[], durationMs: number, hi
 }
 
 /** Builds the minimal deterministic playback payload for a simulated run. */
-function createPlayback(seed: string, durationMs: number, hitCount: number): RunPlayback {
+function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]): RunPlayback {
   const entities = createPlaybackEntities(seed);
-  const motionEvents = createMotionTimeline(entities, durationMs, hitCount);
+  const motionEvents = createMotionTimeline(entities, durationMs, hits);
   const phaseEvents: PhaseEvent[] = [
     {
       kind: "PHASE",
@@ -188,6 +208,7 @@ export function simulateRun(input: RunInput): RunResult {
   const hitCount = calculateHitCount(input.combatStats.speed, durationMs);
   const nextRandom = createSeededRng(input.seed);
   const triggers: RunTriggerEvent[] = [];
+  const hits: SimulatedHit[] = [];
   let totalDamage = 0n;
   let comboCount = 0;
 
@@ -198,6 +219,12 @@ export function simulateRun(input: RunInput): RunResult {
 
     totalDamage += hitDamage;
     comboCount += 1;
+    hits.push({
+      damage: hitDamage,
+      comboAfter: comboCount,
+      isCrit: isCriticalHit,
+      timestampMs
+    });
 
     triggers.push({
       type: isCriticalHit ? "critical-hit" : "hit",
@@ -213,6 +240,6 @@ export function simulateRun(input: RunInput): RunResult {
     comboCount,
     triggers,
     durationMs,
-    playback: createPlayback(input.seed, durationMs, hitCount)
+    playback: createPlayback(input.seed, durationMs, hits)
   };
 }

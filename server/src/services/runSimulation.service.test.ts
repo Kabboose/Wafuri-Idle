@@ -71,8 +71,10 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
   const ballPathEvents = result.playback?.events.filter((event) => event.kind === "BALL_PATH") ?? [];
   const collisionEvents = result.playback?.events.filter((event) => event.kind === "COLLISION") ?? [];
+  const damageEvents = result.playback?.events.filter((event) => event.kind === "DAMAGE") ?? [];
   assert.equal(ballPathEvents.length, 20);
   assert.equal(collisionEvents.length, 10);
+  assert.equal(damageEvents.length, 10);
   assert.ok(ballPathEvents.every((event) => event.tStart >= 0 && event.tEnd <= 10_000 && event.tStart < event.tEnd));
   assert.ok(ballPathEvents.every((event) => event.fromX >= 0 && event.fromX <= 1));
   assert.ok(ballPathEvents.every((event) => event.fromY >= 0 && event.fromY <= 1));
@@ -88,6 +90,24 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     collisionEvents.map((event) => event.timestampMs),
     inboundPathEvents.map((event) => event.tEnd)
   );
+  assert.deepEqual(
+    damageEvents.map((event) => event.timestampMs),
+    collisionEvents.map((event) => event.timestampMs)
+  );
+  assert.deepEqual(
+    damageEvents.map((event) => event.comboAfter),
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  );
+  assert.equal(
+    damageEvents.reduce((total, event) => total + BigInt(event.damage), 0n).toString(),
+    result.totalDamage
+  );
+
+  for (let index = 0; index < collisionEvents.length; index += 1) {
+    const collisionEventIndex: number = result.playback?.events.findIndex((event) => event === collisionEvents[index]) ?? -1;
+    assert.notEqual(collisionEventIndex, -1);
+    assert.equal(result.playback?.events[collisionEventIndex + 1]?.kind, "DAMAGE");
+  }
 });
 
 test("simulateRun applies crit logic deterministically", () => {
@@ -104,4 +124,6 @@ test("simulateRun applies crit logic deterministically", () => {
 
   assert.equal(result.totalDamage, "20000");
   assert.ok(result.triggers.every((trigger) => trigger.type === "critical-hit"));
+  const damageEvents = result.playback?.events.filter((event) => event.kind === "DAMAGE") ?? [];
+  assert.ok(damageEvents.every((event) => event.isCrit));
 });

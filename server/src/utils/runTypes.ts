@@ -81,7 +81,8 @@ export interface DamageEvent {
   x: number;
   y: number;
   damage: BigIntString;
-  comboCount: number;
+  comboAfter: number;
+  isCrit: boolean;
 }
 
 /** Extensible playback trigger hook for future effects layered onto the timeline. */
