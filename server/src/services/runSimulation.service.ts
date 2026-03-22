@@ -1,5 +1,5 @@
 import { GAME_CONFIG } from "../config/index.js";
-import type { PlaybackEntity, RunInput, RunPlayback, RunResult, RunTriggerEvent } from "../utils/runTypes.js";
+import type { BallPathEvent, PhaseEvent, PlaybackEntity, RunInput, RunPlayback, RunResult, RunTriggerEvent } from "../utils/runTypes.js";
 
 const DEFAULT_RUN_DURATION_MS = GAME_CONFIG.run.defaultDurationMs;
 const BASE_CRIT_DAMAGE_MULTIPLIER = BigInt(GAME_CONFIG.run.baseCritDamageMultiplier);
@@ -65,8 +65,64 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
   ];
 }
 
+/** Builds simple deterministic straight-line ball path segments in normalized space. */
+function createBallPathEvents(entities: PlaybackEntity[], durationMs: number, hitCount: number): BallPathEvent[] {
+  const ballEntity = entities.find((entity) => entity.kind === "BALL");
+  const enemyEntity = entities.find((entity) => entity.kind === "ENEMY");
+
+  if (!ballEntity || !enemyEntity || durationMs <= 0) {
+    return [];
+  }
+
+  const segmentCount = Math.min(Math.max(hitCount, 10), 30);
+  const segmentDurationMs = Math.max(Math.floor(durationMs / segmentCount), 1);
+  const reboundX = Math.min(Math.max(1 - enemyEntity.spawnX, 0), 1);
+  const reboundY = Math.min(enemyEntity.spawnY + 0.05, 0.95);
+  const waypoints = [
+    { x: ballEntity.spawnX, y: ballEntity.spawnY },
+    { x: enemyEntity.spawnX, y: enemyEntity.spawnY },
+    { x: reboundX, y: reboundY }
+  ];
+  const events: BallPathEvent[] = [];
+
+  for (let segmentIndex = 0; segmentIndex < segmentCount; segmentIndex += 1) {
+    const fromPoint = waypoints[segmentIndex % waypoints.length];
+    const toPoint = waypoints[(segmentIndex + 1) % waypoints.length];
+    const tStart = segmentIndex * segmentDurationMs;
+    const tEnd = segmentIndex === segmentCount - 1 ? durationMs : Math.min((segmentIndex + 1) * segmentDurationMs, durationMs);
+
+    events.push({
+      kind: "BALL_PATH",
+      tStart,
+      tEnd,
+      entityId: ballEntity.id,
+      fromX: fromPoint.x,
+      fromY: fromPoint.y,
+      toX: toPoint.x,
+      toY: toPoint.y
+    });
+  }
+
+  return events;
+}
+
 /** Builds the minimal deterministic playback payload for a simulated run. */
-function createPlayback(seed: string, durationMs: number): RunPlayback {
+function createPlayback(seed: string, durationMs: number, hitCount: number): RunPlayback {
+  const entities = createPlaybackEntities(seed);
+  const pathEvents = createBallPathEvents(entities, durationMs, hitCount);
+  const phaseEvents: PhaseEvent[] = [
+    {
+      kind: "PHASE",
+      timestampMs: 0,
+      phase: "RUN_START"
+    },
+    {
+      kind: "PHASE",
+      timestampMs: durationMs,
+      phase: "FINISH"
+    }
+  ];
+
   return {
     durationMs,
     arena: {
@@ -74,8 +130,8 @@ function createPlayback(seed: string, durationMs: number): RunPlayback {
       height: 1,
       zones: []
     },
-    entities: createPlaybackEntities(seed),
-    events: []
+    entities,
+    events: [phaseEvents[0], ...pathEvents, phaseEvents[1]]
   };
 }
 
@@ -112,6 +168,6 @@ export function simulateRun(input: RunInput): RunResult {
     comboCount,
     triggers,
     durationMs,
-    playback: createPlayback(input.seed, durationMs)
+    playback: createPlayback(input.seed, durationMs, hitCount)
   };
 }

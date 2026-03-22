@@ -52,7 +52,8 @@ export interface PlaybackEntity {
 /** Straight-line movement segment for the ball through normalized arena coordinates. */
 export interface BallPathEvent {
   kind: "BALL_PATH";
-  timestampMs: number;
+  tStart: number;
+  tEnd: number;
   entityId: string;
   fromX: number;
   fromY: number;
@@ -98,7 +99,7 @@ export interface TriggerEvent {
 export interface PhaseEvent {
   kind: "PHASE";
   timestampMs: number;
-  phase: "RUN_START" | "RUN_FINISH";
+  phase: "RUN_START" | "FINISH";
 }
 
 /** Ordered deterministic playback output derived from the server-side run simulation. */

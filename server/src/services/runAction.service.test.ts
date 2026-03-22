@@ -55,7 +55,17 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
     spawnY: 0.15
   });
   assert.equal(result.runResult.playback?.entities[1]?.kind, "ENEMY");
-  assert.deepEqual(result.runResult.playback?.events, []);
+  assert.deepEqual(result.runResult.playback?.events[0], {
+    kind: "PHASE",
+    timestampMs: 0,
+    phase: "RUN_START"
+  });
+  assert.deepEqual(result.runResult.playback?.events.at(-1), {
+    kind: "PHASE",
+    timestampMs: 10_000,
+    phase: "FINISH"
+  });
+  assert.equal(result.runResult.playback?.events.filter((event) => event.kind === "BALL_PATH").length, 10);
   assert.equal(result.rewardResult.grantedResources.currency, "20000");
   assert.equal(result.rewardResult.grantedResources.progression, "10000000");
   assert.equal(result.player.energy, "22000000");
