@@ -9,6 +9,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "preinstall": "node ./scripts/check-node-version.mjs",
     "install:all": "npm install --workspaces",
     "prisma:generate": "npm run prisma:generate --workspace server",
     "prisma:migrate": "npm run prisma:migrate --workspace server",

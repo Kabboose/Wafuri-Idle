@@ -4,6 +4,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node ../scripts/check-node-version.mjs",
+    "prebuild": "node ../scripts/check-node-version.mjs",
+    "pretest": "node ../scripts/check-node-version.mjs",
+    "prestart": "node ../scripts/check-node-version.mjs",
+    "preprisma:generate": "node ../scripts/check-node-version.mjs",
+    "preprisma:migrate": "node ../scripts/check-node-version.mjs",
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "test": "node --import tsx ./scripts/runAuthTests.ts",

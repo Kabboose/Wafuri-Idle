@@ -4,6 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "node ../scripts/check-node-version.mjs",
+    "prebuild": "node ../scripts/check-node-version.mjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview"

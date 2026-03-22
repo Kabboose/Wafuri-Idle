@@ -5,7 +5,7 @@ import {
   ensureTestDatabaseExists,
   getTestDatabaseUrl,
   wipeTestDatabase
-} from "./testDatabase.ts";
+} from "./testDatabase.js";
 
 /**
  * Prepares the dedicated integration-test database before the auth test suite runs.

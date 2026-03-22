@@ -1,7 +1,4 @@
-import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "crypto";
-import { promisify } from "util";
-
-const scrypt = promisify(scryptCallback);
+import { randomBytes, scrypt, timingSafeEqual } from "crypto";
 
 const SCRYPT_KEY_LENGTH = 64;
 const SCRYPT_COST = 16384;
@@ -9,16 +6,43 @@ const SCRYPT_BLOCK_SIZE = 8;
 const SCRYPT_PARALLELIZATION = 1;
 const HASH_PREFIX = "scrypt";
 
+/** Derives a scrypt key using the configured work factors and resolves to a Buffer. */
+function deriveScryptKey(password: string, salt: Buffer, keyLength: number, cost: number, blockSize: number, parallelization: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scrypt(
+      password,
+      salt,
+      keyLength,
+      {
+        N: cost,
+        r: blockSize,
+        p: parallelization
+      },
+      (error, derivedKey) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve(derivedKey);
+      }
+    );
+  });
+}
+
 /**
  * Hashes a plaintext password with scrypt and returns a self-contained encoded string.
  */
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(16);
-  const derivedKey = (await scrypt(password, salt, SCRYPT_KEY_LENGTH, {
-    N: SCRYPT_COST,
-    r: SCRYPT_BLOCK_SIZE,
-    p: SCRYPT_PARALLELIZATION
-  })) as Buffer;
+  const derivedKey = await deriveScryptKey(
+    password,
+    salt,
+    SCRYPT_KEY_LENGTH,
+    SCRYPT_COST,
+    SCRYPT_BLOCK_SIZE,
+    SCRYPT_PARALLELIZATION
+  );
 
   return [
     HASH_PREFIX,
@@ -49,11 +73,14 @@ export async function verifyPassword(password: string, storedHash: string): Prom
 
   const salt = Buffer.from(saltHex, "hex");
   const storedDerivedKey = Buffer.from(hashHex, "hex");
-  const derivedKey = (await scrypt(password, salt, storedDerivedKey.length, {
-    N: Number(cost),
-    r: Number(blockSize),
-    p: Number(parallelization)
-  })) as Buffer;
+  const derivedKey = await deriveScryptKey(
+    password,
+    salt,
+    storedDerivedKey.length,
+    Number(cost),
+    Number(blockSize),
+    Number(parallelization)
+  );
 
   if (derivedKey.length !== storedDerivedKey.length) {
     return false;

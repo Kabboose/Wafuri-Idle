@@ -54,6 +54,7 @@ This is being designed so the same run outputs can later support async multiplay
 ## Run
 
 This repo requires Node.js 24+ and npm.
+Use `nvm use` in the repo root before running project scripts.
 
 1. Create the server env file:
 
