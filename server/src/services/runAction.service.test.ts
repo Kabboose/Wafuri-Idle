@@ -47,14 +47,14 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
     height: 1,
     zones: []
   });
-  assert.equal(result.runResult.playback.entities.length, 4);
+  assert.equal(result.runResult.playback.entities.length, 9);
   assert.deepEqual(result.runResult.playback.entities[0], {
     id: "ball-1",
     kind: "BALL",
-    spawnX: 0.5,
-    spawnY: 0.15
+    spawnX: 0.52,
+    spawnY: 0.9
   });
-  assert.equal(result.runResult.playback.entities.filter((entity) => entity.kind === "ENEMY").length, 3);
+  assert.equal(result.runResult.playback.entities.filter((entity) => entity.kind === "ENEMY").length, 4);
   assert.deepEqual(result.runResult.playback.events[0], {
     kind: "PHASE",
     timelineTimestampMs: 0,
@@ -69,8 +69,11 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
     timelineTimestampMs: 10_000,
     phase: "FINISH"
   });
-  assert.equal(result.runResult.playback.events.filter((event) => event.kind === "BALL_PATH").length, 20);
-  assert.equal(result.runResult.playback.events.filter((event) => event.kind === "COLLISION").length, 10);
+  const ballPathEvents = result.runResult.playback.events.filter((event) => event.kind === "BALL_PATH");
+  const collisionEvents = result.runResult.playback.events.filter((event) => event.kind === "COLLISION");
+  assert.equal(ballPathEvents.length, collisionEvents.length);
+  assert.equal(collisionEvents.filter((event) => event.collisionKind === "BALL_ENEMY").length, 10);
+  assert.ok(collisionEvents.filter((event) => event.collisionKind === "BALL_WALL").length >= 1);
   assert.equal(result.runResult.playback.events.filter((event) => event.kind === "DAMAGE").length, 10);
   assert.equal(result.runResult.playback.events.filter((event) => event.kind === "TRIGGER").length, 13);
   assert.ok(

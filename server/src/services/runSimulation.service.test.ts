@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { GAME_CONFIG } from "../config/index.js";
 import { simulateRun } from "./runSimulation.service.js";
 import type { PlaybackEvent, RunInput } from "../utils/runTypes.js";
 
@@ -21,6 +22,13 @@ function createRunInput(overrides: Partial<RunInput> = {}): RunInput {
 
 function getPlaybackEventTime(event: PlaybackEvent): number {
   return event.kind === "BALL_PATH" ? event.timelineStartMs : event.timelineTimestampMs;
+}
+
+function isWallBoundaryCoordinate(value: number): boolean {
+  return (
+    Math.abs(value - GAME_CONFIG.run.playbackWallInset) < 0.000001 ||
+    Math.abs(value - (1 - GAME_CONFIG.run.playbackWallInset)) < 0.000001
+  );
 }
 
 test("simulateRun is deterministic for the same input and seed", () => {
@@ -48,15 +56,15 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     height: 1,
     zones: []
   });
-  assert.equal(result.playback.entities.length, 4);
+  assert.equal(result.playback.entities.length, 9);
   assert.deepEqual(result.playback.entities[0], {
     id: "ball-1",
     kind: "BALL",
-    spawnX: 0.5,
-    spawnY: 0.15
+    spawnX: 0.52,
+    spawnY: 0.9
   });
   const enemyEntities = result.playback.entities.filter((entity) => entity.kind === "ENEMY");
-  assert.equal(enemyEntities.length, 3);
+  assert.equal(enemyEntities.length, 4);
   assert.ok(enemyEntities.every((entity) => entity.spawnX >= 0 && entity.spawnX <= 1));
   assert.ok(enemyEntities.every((entity) => entity.spawnY >= 0 && entity.spawnY <= 1));
   assert.equal(result.playback.events[0]?.kind, "PHASE");
@@ -77,10 +85,13 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
   const ballPathEvents = result.playback.events.filter((event) => event.kind === "BALL_PATH");
   const collisionEvents = result.playback.events.filter((event) => event.kind === "COLLISION");
+  const enemyCollisionEvents = collisionEvents.filter((event) => event.collisionKind === "BALL_ENEMY");
+  const wallCollisionEvents = collisionEvents.filter((event) => event.collisionKind === "BALL_WALL");
   const damageEvents = result.playback.events.filter((event) => event.kind === "DAMAGE");
   const triggerEvents = result.playback.events.filter((event) => event.kind === "TRIGGER");
-  assert.equal(ballPathEvents.length, 20);
-  assert.equal(collisionEvents.length, 10);
+  assert.equal(ballPathEvents.length, collisionEvents.length);
+  assert.equal(enemyCollisionEvents.length, 10);
+  assert.ok(wallCollisionEvents.length >= 1);
   assert.equal(damageEvents.length, 10);
   assert.equal(triggerEvents.length, 13);
   assert.ok(
@@ -97,10 +108,18 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.ok(ballPathEvents.every((event) => event.toY >= 0 && event.toY <= 1));
   assert.ok(collisionEvents.every((event) => event.x >= 0 && event.x <= 1));
   assert.ok(collisionEvents.every((event) => event.y >= 0 && event.y <= 1));
-  assert.ok(collisionEvents.every((event) => event.collisionKind === "BALL_ENEMY"));
+  assert.ok(collisionEvents.some((event) => event.collisionKind === "BALL_WALL"));
+  assert.ok(collisionEvents.some((event) => event.collisionKind === "BALL_ENEMY"));
   assert.ok(triggerEvents.every((event) => event.timelineTimestampMs >= 0 && event.timelineTimestampMs <= 10_000));
-  assert.ok(new Set(collisionEvents.map((event) => event.targetEntityId)).size > 1);
+  assert.ok(new Set(enemyCollisionEvents.map((event) => event.targetEntityId)).size > 1);
   assert.ok(new Set(damageEvents.map((event) => event.targetEntityId)).size > 1);
+  assert.ok(new Set(wallCollisionEvents.map((event) => event.targetEntityId)).size >= 1);
+  assert.ok(
+    wallCollisionEvents.every(
+      (event) =>
+        isWallBoundaryCoordinate(event.x) || isWallBoundaryCoordinate(event.y)
+    )
+  );
 
   const impactBurstEvents = triggerEvents.filter((event) => event.triggerKind === "IMPACT_BURST");
   const comboMilestoneEvents = triggerEvents.filter((event) => event.triggerKind === "COMBO_MILESTONE");
@@ -114,11 +133,11 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
   assert.deepEqual(
     damageEvents.map((event) => event.timelineTimestampMs),
-    collisionEvents.map((event) => event.timelineTimestampMs)
+    enemyCollisionEvents.map((event) => event.timelineTimestampMs)
   );
   assert.deepEqual(
     impactBurstEvents.map((event) => event.timelineTimestampMs),
-    collisionEvents.map((event) => event.timelineTimestampMs)
+    enemyCollisionEvents.map((event) => event.timelineTimestampMs)
   );
   assert.deepEqual(
     damageEvents.map((event) => event.comboAfter),
@@ -128,23 +147,79 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     damageEvents.reduce((total, event) => total + BigInt(event.damage), 0n).toString(),
     result.totalDamage
   );
+  assert.ok(
+    enemyCollisionEvents.every((event) => {
+      const enemyEntity = enemyEntities.find((entity) => entity.id === event.targetEntityId);
+
+      if (!enemyEntity) {
+        return false;
+      }
+
+      const distanceToCenter = Math.sqrt(
+        (event.x - enemyEntity.spawnX) * (event.x - enemyEntity.spawnX) +
+        (event.y - enemyEntity.spawnY) * (event.y - enemyEntity.spawnY)
+      );
+
+      return Math.abs(distanceToCenter - GAME_CONFIG.run.playbackEnemyCollisionRadius) < 0.000001;
+    })
+  );
   assert.deepEqual(
     comboMilestoneEvents.map((event) => event.detail?.comboThreshold),
     [5, 10]
   );
   assert.equal(runFinisherEvents[0]?.timelineTimestampMs, 9_750);
 
-  for (let index = 0; index < collisionEvents.length; index += 1) {
-    const collisionEventIndex: number = result.playback.events.findIndex((event) => event === collisionEvents[index]);
+  for (let index = 0; index < enemyCollisionEvents.length; index += 1) {
+    const collisionEventIndex: number = result.playback.events.findIndex((event) => event === enemyCollisionEvents[index]);
     assert.notEqual(collisionEventIndex, -1);
-    const previousEvent: PlaybackEvent | undefined = result.playback.events[collisionEventIndex - 1];
+    const previousEvent: PlaybackEvent | undefined = [...result.playback.events.slice(0, collisionEventIndex)]
+      .reverse()
+      .find((event) => event.kind === "BALL_PATH");
+    const nextEvent: PlaybackEvent | undefined = result.playback.events
+      .slice(collisionEventIndex + 1)
+      .find((event) => event.kind === "BALL_PATH");
     assert.equal(previousEvent?.kind, "BALL_PATH");
     assert.equal(
       previousEvent?.kind === "BALL_PATH" ? previousEvent.timelineEndMs : undefined,
-      collisionEvents[index]?.timelineTimestampMs
+      enemyCollisionEvents[index]?.timelineTimestampMs
     );
     assert.equal(result.playback.events[collisionEventIndex + 1]?.kind, "DAMAGE");
     assert.equal(result.playback.events[collisionEventIndex + 2]?.kind, "TRIGGER");
+
+    if (nextEvent?.kind === "BALL_PATH") {
+      assert.equal(nextEvent.fromX, enemyCollisionEvents[index]?.x);
+      assert.equal(nextEvent.fromY, enemyCollisionEvents[index]?.y);
+    }
+  }
+
+  for (let index = 0; index < wallCollisionEvents.length; index += 1) {
+    const collisionEventIndex = result.playback.events.findIndex((event) => event === wallCollisionEvents[index]);
+    assert.notEqual(collisionEventIndex, -1);
+    const previousEvent = [...result.playback.events.slice(0, collisionEventIndex)]
+      .reverse()
+      .find((event) => event.kind === "BALL_PATH");
+    const nextEvent = result.playback.events
+      .slice(collisionEventIndex + 1)
+      .find((event) => event.kind === "BALL_PATH");
+
+    assert.equal(previousEvent?.kind, "BALL_PATH");
+    assert.equal(nextEvent?.kind, "BALL_PATH");
+    assert.equal(
+      previousEvent?.kind === "BALL_PATH" ? previousEvent.toX : undefined,
+      wallCollisionEvents[index]?.x
+    );
+    assert.equal(
+      previousEvent?.kind === "BALL_PATH" ? previousEvent.toY : undefined,
+      wallCollisionEvents[index]?.y
+    );
+    assert.equal(
+      nextEvent?.kind === "BALL_PATH" ? nextEvent.fromX : undefined,
+      wallCollisionEvents[index]?.x
+    );
+    assert.equal(
+      nextEvent?.kind === "BALL_PATH" ? nextEvent.fromY : undefined,
+      wallCollisionEvents[index]?.y
+    );
   }
 
   const entityIds = new Set(result.playback.entities.map((entity) => entity.id));
@@ -175,6 +250,29 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     }
 
     previousEventTime = eventTime;
+  }
+
+  for (let index = 1; index < ballPathEvents.length; index += 1) {
+    const previousPath = ballPathEvents[index - 1];
+    const nextPath = ballPathEvents[index];
+    const collisionBetweenPaths = result.playback.events.find((event) => {
+      if (event.kind !== "COLLISION") {
+        return false;
+      }
+
+      return (
+        event.timelineTimestampMs === previousPath.timelineEndMs &&
+        event.timelineTimestampMs === nextPath.timelineStartMs &&
+        Math.abs(event.x - previousPath.toX) < 0.000001 &&
+        Math.abs(event.y - previousPath.toY) < 0.000001 &&
+        Math.abs(event.x - nextPath.fromX) < 0.000001 &&
+        Math.abs(event.y - nextPath.fromY) < 0.000001
+      );
+    });
+
+    assert.equal(previousPath.toX, nextPath.fromX);
+    assert.equal(previousPath.toY, nextPath.fromY);
+    assert.ok(collisionBetweenPaths, "path direction changed without an intervening collision");
   }
 });
 

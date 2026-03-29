@@ -183,13 +183,32 @@ export function GameScreen({
         </details>
       </div>
       {error ? <p className="error-text">{error}</p> : null}
-      <p>Player ID: {playerState.id}</p>
-      <p>Energy: {formatWholeFixed(playerState.energy)}</p>
-      <p>Max energy: {formatWholeFixed(playerState.maxEnergy)}</p>
-      <p>Currency: {formatFixed(playerState.currency)}</p>
-      <p>Progression: {formatFixed(playerState.progression)}</p>
-      <p>Energy per second: {formatFixed(playerState.energyPerSecond)} / sec</p>
-      <p>Team power: {playerState.teamPower}</p>
+      <section className="player-hud-grid">
+        <div className="player-hud-card">
+          <span className="player-hud-label">Energy</span>
+          <strong>{formatWholeFixed(playerState.energy)}</strong>
+        </div>
+        <div className="player-hud-card">
+          <span className="player-hud-label">Max Energy</span>
+          <strong>{formatWholeFixed(playerState.maxEnergy)}</strong>
+        </div>
+        <div className="player-hud-card">
+          <span className="player-hud-label">Currency</span>
+          <strong>{formatFixed(playerState.currency)}</strong>
+        </div>
+        <div className="player-hud-card">
+          <span className="player-hud-label">Progression</span>
+          <strong>{formatFixed(playerState.progression)}</strong>
+        </div>
+        <div className="player-hud-card">
+          <span className="player-hud-label">Energy / Sec</span>
+          <strong>{formatFixed(playerState.energyPerSecond)}</strong>
+        </div>
+        <div className="player-hud-card">
+          <span className="player-hud-label">Team Power</span>
+          <strong>{playerState.teamPower}</strong>
+        </div>
+      </section>
       <div className="button-row">
         {playerState.accountType === "GUEST" ? (
           <button type="button" className="secondary-button" onClick={() => setIsUpgradeOpen(true)}>

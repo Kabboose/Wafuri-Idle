@@ -31,7 +31,10 @@ export const GAME_CONFIG = {
     baseCritChanceScale: 10_000,
     speedScale: 1_000,
     playbackComboMilestoneThresholds: [5, 10],
-    playbackFinisherLeadMs: 250
+    playbackFinisherLeadMs: 250,
+    playbackEnemyCollisionRadius: 0.055,
+    playbackWallInset: 0.04,
+    playbackPostImpactTravelDistance: 0.22
   },
   rewards: {
     currencyPerDamage: "1",

@@ -1062,7 +1062,8 @@
             "type": "string",
             "enum": [
               "BALL",
-              "ENEMY"
+              "ENEMY",
+              "ARENA"
             ]
           },
           "spawnX": {
@@ -1147,7 +1148,8 @@
           "collisionKind": {
             "type": "string",
             "enum": [
-              "BALL_ENEMY"
+              "BALL_ENEMY",
+              "BALL_WALL"
             ]
           },
           "x": {
