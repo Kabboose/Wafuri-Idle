@@ -18,6 +18,11 @@ const BASE_CRIT_CHANCE_SCALE = GAME_CONFIG.run.baseCritChanceScale;
 const PLAYBACK_COMBO_MILESTONE_THRESHOLDS = new Set<number>(GAME_CONFIG.run.playbackComboMilestoneThresholds);
 const PLAYBACK_ENEMY_COLLISION_RADIUS = GAME_CONFIG.run.playbackEnemyCollisionRadius;
 const PLAYBACK_FINISHER_LEAD_MS = GAME_CONFIG.run.playbackFinisherLeadMs;
+const ENEMY_PLACEMENT_PADDING = GAME_CONFIG.run.enemyPlacementPadding;
+const MAX_PLACEMENT_RETRIES = GAME_CONFIG.run.maxPlacementRetries;
+const MIXED_PLACEMENT_PADDING = GAME_CONFIG.run.mixedPlacementPadding;
+const OBSTACLE_PLACEMENT_PADDING = GAME_CONFIG.run.obstaclePlacementPadding;
+const PLAYFIELD_PLACEMENT_INSET = GAME_CONFIG.run.playfieldPlacementInset;
 const PLAYBACK_WALL_REBOUND_MAX_NORMAL_COMPONENT = GAME_CONFIG.run.playbackWallReboundMaxNormalComponent;
 const PLAYBACK_WALL_REBOUND_MIN_NORMAL_COMPONENT = GAME_CONFIG.run.playbackWallReboundMinNormalComponent;
 const SPEED_SCALE = GAME_CONFIG.run.speedScale;
@@ -34,6 +39,16 @@ type SimulatedHit = {
 type EnemyTarget = PlaybackEntity & { kind: "ENEMY" };
 type ObstacleTarget = PlaybackEntity & { kind: "OBSTACLE" };
 type CircularTarget = EnemyTarget | ObstacleTarget;
+type CircularPlacementEntity = PlaybackEntity & { collision: { type: "CIRCLE"; radius: number } };
+type PlacementSpec = {
+  id: string;
+  kind: "ENEMY" | "OBSTACLE";
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+  presentation: ReturnType<typeof createPresentation>;
+};
 type Point = { x: number; y: number };
 type WallCollision = Point & {
   normal: Point;
@@ -115,69 +130,268 @@ function createCircleCollision(radius: number) {
   };
 }
 
+/** Builds the closed edge loop for the authored playfield polygon. */
+function createBoundaryEdges(points: ArenaSnapshot["playfieldBoundary"]["points"]): Array<{ from: Point; to: Point }> {
+  return points.map((point, index) => ({
+    from: point,
+    to: points[(index + 1) % points.length] ?? points[0]!
+  }));
+}
+
+/** Returns the shortest distance from a point to a finite line segment. */
+function getDistanceToSegment(point: Point, segmentStart: Point, segmentEnd: Point): number {
+  const segmentDeltaX = segmentEnd.x - segmentStart.x;
+  const segmentDeltaY = segmentEnd.y - segmentStart.y;
+  const segmentLengthSquared = segmentDeltaX * segmentDeltaX + segmentDeltaY * segmentDeltaY;
+
+  if (segmentLengthSquared <= Number.EPSILON) {
+    return getVectorLength(point.x - segmentStart.x, point.y - segmentStart.y);
+  }
+
+  const interpolation = Math.min(
+    Math.max(
+      ((point.x - segmentStart.x) * segmentDeltaX + (point.y - segmentStart.y) * segmentDeltaY) / segmentLengthSquared,
+      0
+    ),
+    1
+  );
+  const closestPoint = {
+    x: segmentStart.x + segmentDeltaX * interpolation,
+    y: segmentStart.y + segmentDeltaY * interpolation
+  };
+
+  return getVectorLength(point.x - closestPoint.x, point.y - closestPoint.y);
+}
+
+/** Returns true when a point lies inside the closed authored playfield polygon. */
+function isPointInsidePlayfield(point: Point, boundaryPoints: ArenaSnapshot["playfieldBoundary"]["points"]): boolean {
+  let inside = false;
+
+  for (let index = 0, previousIndex = boundaryPoints.length - 1; index < boundaryPoints.length; previousIndex = index, index += 1) {
+    const currentPoint = boundaryPoints[index]!;
+    const previousPoint = boundaryPoints[previousIndex]!;
+    const intersects =
+      (currentPoint.y > point.y) !== (previousPoint.y > point.y) &&
+      point.x <
+        ((previousPoint.x - currentPoint.x) * (point.y - currentPoint.y)) /
+          ((previousPoint.y - currentPoint.y) || Number.EPSILON) +
+          currentPoint.x;
+
+    if (intersects) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
+/** Extracts a circle collision radius from a playback entity when present. */
+function getCircleCollisionRadius(entity: PlaybackEntity): number | null {
+  return entity.collision?.type === "CIRCLE" ? entity.collision.radius : null;
+}
+
+/** Returns true when a circular placement candidate is inside the playfield with the configured deadzone. */
+function isPlacementInsidePlayfield(
+  point: Point,
+  radius: number,
+  boundary: ArenaSnapshot["playfieldBoundary"]
+): boolean {
+  if (!isPointInsidePlayfield(point, boundary.points)) {
+    return false;
+  }
+
+  const minimumBoundaryDistance = radius + PLAYFIELD_PLACEMENT_INSET;
+  const closestBoundaryDistance = createBoundaryEdges(boundary.points).reduce((closestDistance, edge) => (
+    Math.min(closestDistance, getDistanceToSegment(point, edge.from, edge.to))
+  ), Number.POSITIVE_INFINITY);
+
+  return closestBoundaryDistance >= minimumBoundaryDistance - Number.EPSILON;
+}
+
+/** Returns the configured placement padding for a pair of circular entity kinds. */
+function getPlacementPadding(
+  candidateKind: CircularPlacementEntity["kind"],
+  existingKind: CircularPlacementEntity["kind"]
+): number {
+  if (candidateKind === "ENEMY" && existingKind === "ENEMY") {
+    return ENEMY_PLACEMENT_PADDING;
+  }
+
+  if (candidateKind === "OBSTACLE" && existingKind === "OBSTACLE") {
+    return OBSTACLE_PLACEMENT_PADDING;
+  }
+
+  return MIXED_PLACEMENT_PADDING;
+}
+
+/** Returns true when a circular placement candidate is sufficiently separated from existing entities. */
+function hasValidPlacementSpacing(
+  point: Point,
+  kind: CircularPlacementEntity["kind"],
+  radius: number,
+  placedEntities: CircularPlacementEntity[]
+): boolean {
+  return placedEntities.every((entity) => {
+    const existingRadius = getCircleCollisionRadius(entity);
+
+    if (existingRadius === null) {
+      return true;
+    }
+
+    const minimumDistance = radius + existingRadius + getPlacementPadding(kind, entity.kind);
+    const actualDistance = getVectorLength(point.x - entity.spawnX, point.y - entity.spawnY);
+
+    return actualDistance >= minimumDistance - Number.EPSILON;
+  });
+}
+
+/** Builds a deterministic candidate point inside the authored range for the provided attempt index. */
+function createPlacementCandidate(
+  spec: PlacementSpec,
+  nextRandom: () => number,
+  attemptIndex: number
+): Point {
+  if (attemptIndex < MAX_PLACEMENT_RETRIES) {
+    return {
+      x: normalizePosition(nextRandom, spec.minX, spec.maxX),
+      y: normalizePosition(nextRandom, spec.minY, spec.maxY)
+    };
+  }
+
+  const fallbackPatterns = [
+    { x: 0.5, y: 0.5 },
+    { x: 0.35, y: 0.35 },
+    { x: 0.65, y: 0.35 },
+    { x: 0.35, y: 0.65 },
+    { x: 0.65, y: 0.65 },
+    { x: 0.5, y: 0.2 },
+    { x: 0.5, y: 0.8 },
+    { x: 0.2, y: 0.5 },
+    { x: 0.8, y: 0.5 }
+  ];
+  const fallback = fallbackPatterns[(attemptIndex - MAX_PLACEMENT_RETRIES) % fallbackPatterns.length]!;
+
+  return {
+    x: spec.minX + (spec.maxX - spec.minX) * fallback.x,
+    y: spec.minY + (spec.maxY - spec.minY) * fallback.y
+  };
+}
+
+/** Resolves a deterministic, valid circular placement for an enemy or obstacle within the shaped playfield. */
+function resolveCircularPlacement(
+  spec: PlacementSpec,
+  nextRandom: () => number,
+  boundary: ArenaSnapshot["playfieldBoundary"],
+  placedEntities: CircularPlacementEntity[]
+): CircularPlacementEntity {
+  const radius = PLAYBACK_ENEMY_COLLISION_RADIUS;
+  const maxFallbackAttempts = MAX_PLACEMENT_RETRIES + 9;
+
+  for (let attemptIndex = 0; attemptIndex < maxFallbackAttempts; attemptIndex += 1) {
+    const candidate = createPlacementCandidate(spec, nextRandom, attemptIndex);
+
+    if (
+      isPlacementInsidePlayfield(candidate, radius, boundary) &&
+      hasValidPlacementSpacing(candidate, spec.kind, radius, placedEntities)
+    ) {
+      return {
+        id: spec.id,
+        kind: spec.kind,
+        spawnX: candidate.x,
+        spawnY: candidate.y,
+        presentation: spec.presentation,
+        collision: createCircleCollision(radius)
+      };
+    }
+  }
+
+  throw new Error(`Unable to resolve deterministic playback placement for ${spec.id}`);
+}
+
 /** Builds the deterministic entity layout for the run playback snapshot. */
 function createPlaybackEntities(seed: string): PlaybackEntity[] {
+  const playfieldBoundary = createPlayfieldBoundary();
   const nextRandom = createSeededRng(`${seed}:playback-layout`);
-  const enemies: PlaybackEntity[] = [
-    {
-      id: "enemy-1",
-      kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.18, 0.32),
-      spawnY: normalizePosition(nextRandom, 0.14, 0.22),
-      presentation: createPresentation("enemy-orb-red", -8, 1),
-      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
-    },
-    {
-      id: "enemy-2",
-      kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.72, 0.88),
-      spawnY: normalizePosition(nextRandom, 0.26, 0.4),
-      presentation: createPresentation("enemy-orb-red", 12, 1.02),
-      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
-    },
-    {
-      id: "enemy-3",
-      kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.6, 0.76),
-      spawnY: normalizePosition(nextRandom, 0.46, 0.62),
-      presentation: createPresentation("enemy-orb-red", 4, 1.04),
-      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
-    },
-    {
-      id: "enemy-4",
-      kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.46, 0.6),
-      spawnY: normalizePosition(nextRandom, 0.68, 0.82),
-      presentation: createPresentation("enemy-orb-red", -14, 0.98),
-      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
-    }
-  ];
-  const obstacles: PlaybackEntity[] = [
+  const placedCircularEntities: CircularPlacementEntity[] = [];
+  const obstacleSpecs: PlacementSpec[] = [
     {
       id: "obstacle-1",
       kind: "OBSTACLE",
-      spawnX: normalizePosition(nextRandom, 0.12, 0.18),
-      spawnY: normalizePosition(nextRandom, 0.24, 0.36),
-      presentation: createPresentation("bumper-round-silver", -18, 1),
-      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
+      minX: 0.18,
+      maxX: 0.26,
+      minY: 0.26,
+      maxY: 0.34,
+      presentation: createPresentation("bumper-round-silver", -18, 1)
     },
     {
       id: "obstacle-2",
       kind: "OBSTACLE",
-      spawnX: normalizePosition(nextRandom, 0.82, 0.9),
-      spawnY: normalizePosition(nextRandom, 0.42, 0.56),
-      presentation: createPresentation("bumper-round-silver", 16, 1.08),
-      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
+      minX: 0.68,
+      maxX: 0.76,
+      minY: 0.44,
+      maxY: 0.54,
+      presentation: createPresentation("bumper-round-silver", 16, 1.08)
     },
     {
       id: "obstacle-3",
       kind: "OBSTACLE",
-      spawnX: normalizePosition(nextRandom, 0.74, 0.84),
-      spawnY: normalizePosition(nextRandom, 0.62, 0.76),
-      presentation: createPresentation("bumper-round-silver", 28, 1.02),
-      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
+      minX: 0.56,
+      maxX: 0.68,
+      minY: 0.58,
+      maxY: 0.7,
+      presentation: createPresentation("bumper-round-silver", 28, 1.02)
     }
   ];
+  const enemySpecs: PlacementSpec[] = [
+    {
+      id: "enemy-1",
+      kind: "ENEMY",
+      minX: 0.24,
+      maxX: 0.34,
+      minY: 0.14,
+      maxY: 0.2,
+      presentation: createPresentation("enemy-orb-red", -8, 1)
+    },
+    {
+      id: "enemy-2",
+      kind: "ENEMY",
+      minX: 0.66,
+      maxX: 0.78,
+      minY: 0.24,
+      maxY: 0.34,
+      presentation: createPresentation("enemy-orb-red", 12, 1.02)
+    },
+    {
+      id: "enemy-3",
+      kind: "ENEMY",
+      minX: 0.52,
+      maxX: 0.7,
+      minY: 0.46,
+      maxY: 0.6,
+      presentation: createPresentation("enemy-orb-red", 4, 1.04)
+    },
+    {
+      id: "enemy-4",
+      kind: "ENEMY",
+      minX: 0.42,
+      maxX: 0.58,
+      minY: 0.68,
+      maxY: 0.8,
+      presentation: createPresentation("enemy-orb-red", -14, 0.98)
+    }
+  ];
+  const obstacles = obstacleSpecs.map((spec) => {
+    const obstacle = resolveCircularPlacement(spec, nextRandom, playfieldBoundary, placedCircularEntities);
+
+    placedCircularEntities.push(obstacle);
+    return obstacle;
+  });
+  const enemies = enemySpecs.map((spec) => {
+    const enemy = resolveCircularPlacement(spec, nextRandom, playfieldBoundary, placedCircularEntities);
+
+    placedCircularEntities.push(enemy);
+    return enemy;
+  });
 
   return [
     {

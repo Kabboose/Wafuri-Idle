@@ -38,6 +38,55 @@ function getPathDirection(event: Extract<PlaybackEvent, { kind: "BALL_PATH" }>) 
   };
 }
 
+function isPointInsidePolygon(point: { x: number; y: number }, polygonPoints: Array<{ x: number; y: number }>): boolean {
+  let inside = false;
+
+  for (let index = 0, previousIndex = polygonPoints.length - 1; index < polygonPoints.length; previousIndex = index, index += 1) {
+    const currentPoint = polygonPoints[index]!;
+    const previousPoint = polygonPoints[previousIndex]!;
+    const intersects =
+      (currentPoint.y > point.y) !== (previousPoint.y > point.y) &&
+      point.x <
+        ((previousPoint.x - currentPoint.x) * (point.y - currentPoint.y)) /
+          ((previousPoint.y - currentPoint.y) || Number.EPSILON) +
+          currentPoint.x;
+
+    if (intersects) {
+      inside = !inside;
+    }
+  }
+
+  return inside;
+}
+
+function getDistanceToSegment(
+  point: { x: number; y: number },
+  segmentStart: { x: number; y: number },
+  segmentEnd: { x: number; y: number }
+): number {
+  const segmentDeltaX = segmentEnd.x - segmentStart.x;
+  const segmentDeltaY = segmentEnd.y - segmentStart.y;
+  const segmentLengthSquared = segmentDeltaX * segmentDeltaX + segmentDeltaY * segmentDeltaY;
+
+  if (segmentLengthSquared <= Number.EPSILON) {
+    return Math.sqrt((point.x - segmentStart.x) ** 2 + (point.y - segmentStart.y) ** 2);
+  }
+
+  const interpolation = Math.min(
+    Math.max(
+      ((point.x - segmentStart.x) * segmentDeltaX + (point.y - segmentStart.y) * segmentDeltaY) / segmentLengthSquared,
+      0
+    ),
+    1
+  );
+  const closestPoint = {
+    x: segmentStart.x + segmentDeltaX * interpolation,
+    y: segmentStart.y + segmentDeltaY * interpolation
+  };
+
+  return Math.sqrt((point.x - closestPoint.x) ** 2 + (point.y - closestPoint.y) ** 2);
+}
+
 test("simulateRun is deterministic for the same input and seed", () => {
   const input = createRunInput();
 
@@ -116,15 +165,62 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.ok(Math.abs(boundaryPoints[5]!.x - (1 - boundaryPoints[2]!.x)) < 0.000001);
   assert.equal(boundaryPoints[5]!.y, boundaryPoints[2]!.y);
   assert.ok(Math.abs(boundaryPoints[4]!.x - (1 - boundaryPoints[3]!.x)) < 0.000001);
-  assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.7 && entity.spawnY < 0.42));
-  assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.58 && entity.spawnY > 0.44 && entity.spawnY < 0.64));
+  assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.64 && entity.spawnY < 0.42));
+  assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.54 && entity.spawnY > 0.44 && entity.spawnY < 0.64));
   assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.44 && entity.spawnX < 0.62 && entity.spawnY > 0.66 && entity.spawnY < 0.84));
-  assert.ok(obstacleEntities.some((entity) => entity.spawnX < 0.24 && entity.spawnY > 0.22 && entity.spawnY < 0.38));
-  assert.ok(obstacleEntities.some((entity) => entity.spawnX > 0.78 && entity.spawnY > 0.4 && entity.spawnY < 0.58));
-  assert.ok(obstacleEntities.some((entity) => entity.spawnX > 0.72 && entity.spawnY > 0.6 && entity.spawnY < 0.78));
-  assert.ok(enemyEntities.filter((entity) => entity.spawnX > 0.5).length >= 3);
+  assert.ok(obstacleEntities.some((entity) => entity.spawnX < 0.3 && entity.spawnY > 0.22 && entity.spawnY < 0.38));
+  assert.ok(obstacleEntities.some((entity) => entity.spawnX > 0.68 && entity.spawnY > 0.4 && entity.spawnY < 0.58));
+  assert.ok(obstacleEntities.some((entity) => entity.spawnX > 0.62 && entity.spawnY > 0.58 && entity.spawnY < 0.74));
+  assert.ok(enemyEntities.filter((entity) => entity.spawnX > 0.5).length >= 2);
   assert.ok(enemyEntities.every((entity) => entity.spawnY < 0.84));
   assert.ok(obstacleEntities.every((entity) => entity.spawnY < 0.78));
+  const circularEntities = [...enemyEntities, ...obstacleEntities];
+  const boundaryEdges = boundaryPoints.map((point, index) => ({
+    from: point,
+    to: boundaryPoints[(index + 1) % boundaryPoints.length] ?? boundaryPoints[0]!
+  }));
+  assert.ok(
+    circularEntities.every((entity) => {
+      if (entity.collision?.type !== "CIRCLE") {
+        return false;
+      }
+
+      const point = { x: entity.spawnX, y: entity.spawnY };
+      const minimumBoundaryDistance = entity.collision.radius + GAME_CONFIG.run.playfieldPlacementInset;
+      const closestBoundaryDistance = boundaryEdges.reduce(
+        (closestDistance, edge) => Math.min(closestDistance, getDistanceToSegment(point, edge.from, edge.to)),
+        Number.POSITIVE_INFINITY
+      );
+
+      return (
+        isPointInsidePolygon(point, boundaryPoints) &&
+        closestBoundaryDistance >= minimumBoundaryDistance - 0.000001
+      );
+    })
+  );
+
+  for (let index = 0; index < circularEntities.length; index += 1) {
+    const currentEntity = circularEntities[index]!;
+    const currentRadius = currentEntity.collision?.type === "CIRCLE" ? currentEntity.collision.radius : 0;
+
+    for (let comparisonIndex = index + 1; comparisonIndex < circularEntities.length; comparisonIndex += 1) {
+      const comparisonEntity = circularEntities[comparisonIndex]!;
+      const comparisonRadius = comparisonEntity.collision?.type === "CIRCLE" ? comparisonEntity.collision.radius : 0;
+      const minimumSeparation = currentRadius + comparisonRadius + (
+        currentEntity.kind === "ENEMY" && comparisonEntity.kind === "ENEMY"
+          ? GAME_CONFIG.run.enemyPlacementPadding
+          : currentEntity.kind === "OBSTACLE" && comparisonEntity.kind === "OBSTACLE"
+            ? GAME_CONFIG.run.obstaclePlacementPadding
+            : GAME_CONFIG.run.mixedPlacementPadding
+      );
+      const actualSeparation = Math.sqrt(
+        (currentEntity.spawnX - comparisonEntity.spawnX) * (currentEntity.spawnX - comparisonEntity.spawnX) +
+        (currentEntity.spawnY - comparisonEntity.spawnY) * (currentEntity.spawnY - comparisonEntity.spawnY)
+      );
+
+      assert.ok(actualSeparation >= minimumSeparation - 0.000001);
+    }
+  }
   assert.equal(result.playback.events[0]?.kind, "PHASE");
   assert.deepEqual(result.playback.events[0], {
     kind: "PHASE",

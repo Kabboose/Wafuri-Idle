@@ -33,6 +33,11 @@ export const GAME_CONFIG = {
     playbackComboMilestoneThresholds: [5, 10],
     playbackFinisherLeadMs: 250,
     playbackEnemyCollisionRadius: 0.055,
+    playfieldPlacementInset: 0.025,
+    enemyPlacementPadding: 0.02,
+    obstaclePlacementPadding: 0.02,
+    mixedPlacementPadding: 0.02,
+    maxPlacementRetries: 24,
     playbackWallInset: 0.04,
     playbackWallReboundMinNormalComponent: 0.35,
     playbackWallReboundMaxNormalComponent: 0.9
