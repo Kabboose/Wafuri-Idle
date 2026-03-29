@@ -38,6 +38,42 @@ function getPathDirection(event: Extract<PlaybackEvent, { kind: "BALL_PATH" }>) 
   };
 }
 
+function degreesToRadians(degrees: number): number {
+  return (degrees * Math.PI) / 180;
+}
+
+function getActiveFlipperAxis(flipperId: string) {
+  const angleRadians = degreesToRadians(GAME_CONFIG.run.playbackFlipperActiveAngleDegrees);
+  const horizontalDirection = Math.cos(angleRadians);
+  const verticalDirection = Math.sin(angleRadians) * -1;
+
+  return flipperId === "flipper-left"
+    ? { x: horizontalDirection, y: verticalDirection }
+    : { x: horizontalDirection * -1, y: verticalDirection };
+}
+
+function getFlipperBasePoint(flipper: { id: string; spawnX: number; spawnY: number; collision?: { type: string; width?: number } }) {
+  const axis = getActiveFlipperAxis(flipper.id);
+  const halfWidth = (flipper.collision?.type === "BOX" ? flipper.collision.width ?? 0 : 0) / 2;
+
+  return {
+    x: flipper.spawnX - axis.x * halfWidth,
+    y: flipper.spawnY - axis.y * halfWidth
+  };
+}
+
+function getFlipperContactRatio(
+  flipper: { id: string; spawnX: number; spawnY: number; collision?: { type: string; width?: number } },
+  contactPoint: { x: number; y: number }
+): number {
+  const axis = getActiveFlipperAxis(flipper.id);
+  const basePoint = getFlipperBasePoint(flipper);
+  const width = flipper.collision?.type === "BOX" ? flipper.collision.width ?? 0 : 0;
+  const projectedDistance = (contactPoint.x - basePoint.x) * axis.x + (contactPoint.y - basePoint.y) * axis.y;
+
+  return Math.min(Math.max(projectedDistance / Math.max(width, Number.EPSILON), 0), 1);
+}
+
 function isPointInsidePolygon(point: { x: number; y: number }, polygonPoints: Array<{ x: number; y: number }>): boolean {
   let inside = false;
 
@@ -451,15 +487,57 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
     if (nextEvent?.kind === "BALL_PATH") {
       const relaunchDirection = getPathDirection(nextEvent);
+      const flipperEntity = flipperEntities.find((entity) => entity.id === flipperCollisionEvents[index]?.targetEntityId);
+      const contactRatio = flipperEntity
+        ? getFlipperContactRatio(flipperEntity, {
+            x: flipperCollisionEvents[index]!.x,
+            y: flipperCollisionEvents[index]!.y
+          })
+        : null;
 
       assert.ok(relaunchDirection.y < 0);
       assert.ok(relaunchDirection.y <= -0.88);
       assert.ok(Math.abs(relaunchDirection.x) >= 0.22);
-      assert.ok(Math.abs(relaunchDirection.x) <= 0.42);
+      assert.ok(Math.abs(relaunchDirection.x) <= 0.48);
       assert.ok(
         flipperCollisionEvents[index]?.targetEntityId === "flipper-left"
           ? relaunchDirection.x > 0
           : relaunchDirection.x < 0
+      );
+      assert.notEqual(contactRatio, null);
+      assert.ok((contactRatio ?? -1) >= 0);
+      assert.ok((contactRatio ?? 2) <= 1);
+    }
+  }
+
+  for (const flipperId of ["flipper-left", "flipper-right"] as const) {
+    const relaunchSamples = flipperCollisionEvents
+      .map((event) => {
+        const collisionEventIndex = result.playback.events.findIndex((candidateEvent) => candidateEvent === event);
+        const nextPathEvent = result.playback.events
+          .slice(collisionEventIndex + 1)
+          .find((candidateEvent) => candidateEvent.kind === "BALL_PATH");
+        const flipperEntity = flipperEntities.find((entity) => entity.id === event.targetEntityId);
+
+        if (event.targetEntityId !== flipperId || !flipperEntity || nextPathEvent?.kind !== "BALL_PATH") {
+          return null;
+        }
+
+        return {
+          contactRatio: getFlipperContactRatio(flipperEntity, { x: event.x, y: event.y }),
+          horizontalMagnitude: Math.abs(getPathDirection(nextPathEvent).x)
+        };
+      })
+      .filter((sample): sample is { contactRatio: number; horizontalMagnitude: number } => sample !== null)
+      .sort((left, right) => left.contactRatio - right.contactRatio);
+
+    for (let index = 1; index < relaunchSamples.length; index += 1) {
+      if (relaunchSamples[index]!.contactRatio - relaunchSamples[index - 1]!.contactRatio <= 0.02) {
+        continue;
+      }
+
+      assert.ok(
+        relaunchSamples[index]!.horizontalMagnitude >= relaunchSamples[index - 1]!.horizontalMagnitude - 0.000001
       );
     }
   }

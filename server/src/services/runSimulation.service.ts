@@ -20,6 +20,8 @@ const PLAYBACK_ENEMY_COLLISION_RADIUS = GAME_CONFIG.run.playbackEnemyCollisionRa
 const PLAYBACK_FINISHER_LEAD_MS = GAME_CONFIG.run.playbackFinisherLeadMs;
 const PLAYBACK_FLIPPER_HEIGHT = GAME_CONFIG.run.playbackFlipperHeight;
 const PLAYBACK_FLIPPER_INSET_X = GAME_CONFIG.run.playbackFlipperInsetX;
+const PLAYBACK_FLIPPER_RESTING_ANGLE_DEGREES = GAME_CONFIG.run.playbackFlipperRestingAngleDegrees;
+const PLAYBACK_FLIPPER_ACTIVE_ANGLE_DEGREES = GAME_CONFIG.run.playbackFlipperActiveAngleDegrees;
 const PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION = GAME_CONFIG.run.playbackFlipperInnerHorizontalDirection;
 const PLAYBACK_FLIPPER_OUTER_HORIZONTAL_DIRECTION = GAME_CONFIG.run.playbackFlipperOuterHorizontalDirection;
 const PLAYBACK_FLIPPER_RELAUNCH_SPEED_MULTIPLIER = GAME_CONFIG.run.playbackFlipperRelaunchSpeedMultiplier;
@@ -350,7 +352,7 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
       kind: "ARENA",
       spawnX: PLAYBACK_FLIPPER_INSET_X + PLAYBACK_FLIPPER_WIDTH / 2,
       spawnY: PLAYBACK_FLIPPER_TOP_Y + PLAYBACK_FLIPPER_HEIGHT / 2,
-      presentation: createPresentation("flipper-left", 11, 1),
+      presentation: createPresentation("flipper-left", PLAYBACK_FLIPPER_RESTING_ANGLE_DEGREES, 1),
       collision: createBoxCollision(PLAYBACK_FLIPPER_WIDTH, PLAYBACK_FLIPPER_HEIGHT)
     },
     {
@@ -358,7 +360,7 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
       kind: "ARENA",
       spawnX: 1 - PLAYBACK_FLIPPER_INSET_X - PLAYBACK_FLIPPER_WIDTH / 2,
       spawnY: PLAYBACK_FLIPPER_TOP_Y + PLAYBACK_FLIPPER_HEIGHT / 2,
-      presentation: createPresentation("flipper-right", -11, 1),
+      presentation: createPresentation("flipper-right", PLAYBACK_FLIPPER_RESTING_ANGLE_DEGREES * -1, 1),
       collision: createBoxCollision(PLAYBACK_FLIPPER_WIDTH, PLAYBACK_FLIPPER_HEIGHT)
     }
   ];
@@ -524,6 +526,11 @@ function normalizeVector(x: number, y: number, fallback: Point): Point {
   };
 }
 
+/** Converts a degree value into radians. */
+function degreesToRadians(degrees: number): number {
+  return (degrees * Math.PI) / 180;
+}
+
 /** Reflects an incoming unit direction around the provided surface normal. */
 function reflectDirection(direction: Point, normal: Point): Point {
   const dot = direction.x * normal.x + direction.y * normal.y;
@@ -533,6 +540,56 @@ function reflectDirection(direction: Point, normal: Point): Point {
     direction.y - 2 * dot * normal.y,
     { x: direction.x * -1, y: direction.y * -1 }
   );
+}
+
+/** Returns the active flipper tangent direction from pivot/base toward the tip. */
+function getActiveFlipperAxis(flipper: FlipperTarget): Point {
+  const angleRadians = degreesToRadians(PLAYBACK_FLIPPER_ACTIVE_ANGLE_DEGREES);
+  const horizontalDirection = Math.cos(angleRadians);
+  const verticalDirection = Math.sin(angleRadians) * -1;
+
+  return flipper.id === "flipper-left"
+    ? normalizeVector(horizontalDirection, verticalDirection, { x: 1, y: -1 })
+    : normalizeVector(horizontalDirection * -1, verticalDirection, { x: -1, y: -1 });
+}
+
+/** Returns the flipper pivot/base position for the active launch orientation. */
+function getFlipperBasePoint(flipper: FlipperTarget): Point {
+  const axis = getActiveFlipperAxis(flipper);
+  const halfWidth = flipper.collision.width / 2;
+
+  return {
+    x: flipper.spawnX - axis.x * halfWidth,
+    y: flipper.spawnY - axis.y * halfWidth
+  };
+}
+
+/** Returns how far along the active flipper axis a contact landed, from base to tip. */
+function getFlipperContactRatio(contactPoint: Point, flipper: FlipperTarget): number {
+  const basePoint = getFlipperBasePoint(flipper);
+  const axis = getActiveFlipperAxis(flipper);
+  const projectedDistance = (contactPoint.x - basePoint.x) * axis.x + (contactPoint.y - basePoint.y) * axis.y;
+
+  return Math.min(Math.max(projectedDistance / Math.max(flipper.collision.width, Number.EPSILON), 0), 1);
+}
+
+/** Builds a deterministic flipper relaunch direction from the active paddle angle and contact position. */
+function getFlipperLaunchDirection(flipper: FlipperTarget, contactRatio: number): Point {
+  const activeAngleSlope = Math.tan(degreesToRadians(PLAYBACK_FLIPPER_ACTIVE_ANGLE_DEGREES));
+  const angleScale = 0.5 + Math.max(activeAngleSlope, Number.EPSILON);
+  const horizontalMagnitude =
+    PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION +
+    (PLAYBACK_FLIPPER_OUTER_HORIZONTAL_DIRECTION - PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION) * contactRatio;
+  const angleScaledHorizontalMagnitude = horizontalMagnitude * angleScale;
+  const upwardMagnitude = 1.34 - contactRatio * 0.18;
+  const horizontalDirection = flipper.id === "flipper-left"
+    ? angleScaledHorizontalMagnitude
+    : angleScaledHorizontalMagnitude * -1;
+
+  return normalizeVector(horizontalDirection, upwardMagnitude * -1, {
+    x: horizontalDirection,
+    y: -1
+  });
 }
 
 /** Clamps a wall rebound so the exit angle stays readable and pinball-like. */
@@ -822,16 +879,8 @@ function getFlipperCollision(
       x: clampNormalized(start.x + direction.x * distanceEntry),
       y: clampNormalized(start.y + direction.y * distanceEntry)
     };
-    const contactRatio = Math.min(
-      Math.max((contactPoint.x - minX) / Math.max(maxX - minX, Number.EPSILON), 0),
-      1
-    );
-    const outerContactBias = flipper.id === "flipper-left" ? 1 - contactRatio : contactRatio;
-    const horizontalDirection = PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION +
-      (PLAYBACK_FLIPPER_OUTER_HORIZONTAL_DIRECTION - PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION) * outerContactBias;
-    const relaunchDirection = flipper.id === "flipper-left"
-      ? normalizeVector(horizontalDirection, -1.28, { x: 0.42, y: -1.28 })
-      : normalizeVector(horizontalDirection * -1, -1.28, { x: -0.42, y: -1.28 });
+    const contactRatio = getFlipperContactRatio(contactPoint, flipper);
+    const relaunchDirection = getFlipperLaunchDirection(flipper, contactRatio);
 
     collisions.push({
       flipper,
