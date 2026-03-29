@@ -169,11 +169,11 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.54 && entity.spawnY > 0.44 && entity.spawnY < 0.64));
   assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.44 && entity.spawnX < 0.62 && entity.spawnY > 0.66 && entity.spawnY < 0.84));
   assert.ok(obstacleEntities.some((entity) => entity.spawnX < 0.3 && entity.spawnY > 0.22 && entity.spawnY < 0.38));
-  assert.ok(obstacleEntities.some((entity) => entity.spawnX > 0.68 && entity.spawnY > 0.4 && entity.spawnY < 0.58));
-  assert.ok(obstacleEntities.some((entity) => entity.spawnX > 0.62 && entity.spawnY > 0.58 && entity.spawnY < 0.74));
+  assert.ok(obstacleEntities.some((entity) => entity.spawnX > 0.68 && entity.spawnY > 0.38 && entity.spawnY < 0.52));
+  assert.ok(obstacleEntities.some((entity) => entity.spawnX > 0.58 && entity.spawnY > 0.52 && entity.spawnY < 0.68));
   assert.ok(enemyEntities.filter((entity) => entity.spawnX > 0.5).length >= 2);
-  assert.ok(enemyEntities.every((entity) => entity.spawnY < 0.84));
-  assert.ok(obstacleEntities.every((entity) => entity.spawnY < 0.78));
+  assert.ok(enemyEntities.every((entity) => entity.spawnY < 0.72));
+  assert.ok(obstacleEntities.every((entity) => entity.spawnY < 0.68));
   const circularEntities = [...enemyEntities, ...obstacleEntities];
   const boundaryEdges = boundaryPoints.map((point, index) => ({
     from: point,
@@ -194,6 +194,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
       return (
         isPointInsidePolygon(point, boundaryPoints) &&
+        point.y + entity.collision.radius <= GAME_CONFIG.run.playfieldBottomExclusionStartY + 0.000001 &&
         closestBoundaryDistance >= minimumBoundaryDistance - 0.000001
       );
     })

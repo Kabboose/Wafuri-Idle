@@ -485,22 +485,22 @@ button:active {
 
 .replay-enemy {
   z-index: 2;
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 10px;
   background: linear-gradient(180deg, rgba(239, 68, 68, 0.95), rgba(153, 27, 27, 0.95));
   border: 1px solid rgba(254, 202, 202, 0.4);
-  box-shadow: 0 10px 24px rgba(127, 29, 29, 0.35);
+  box-shadow: 0 8px 20px rgba(127, 29, 29, 0.35);
 }
 
 .replay-obstacle {
   z-index: 2;
-  width: 28px;
-  height: 28px;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
   background: radial-gradient(circle at 35% 35%, rgba(248, 250, 252, 0.95), rgba(148, 163, 184, 0.92) 60%, rgba(30, 41, 59, 0.96) 100%);
   border: 1px solid rgba(226, 232, 240, 0.45);
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.28);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.28);
 }
 
 .replay-world-cue {

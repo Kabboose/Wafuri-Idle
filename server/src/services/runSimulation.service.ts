@@ -18,6 +18,7 @@ const BASE_CRIT_CHANCE_SCALE = GAME_CONFIG.run.baseCritChanceScale;
 const PLAYBACK_COMBO_MILESTONE_THRESHOLDS = new Set<number>(GAME_CONFIG.run.playbackComboMilestoneThresholds);
 const PLAYBACK_ENEMY_COLLISION_RADIUS = GAME_CONFIG.run.playbackEnemyCollisionRadius;
 const PLAYBACK_FINISHER_LEAD_MS = GAME_CONFIG.run.playbackFinisherLeadMs;
+const PLAYFIELD_BOTTOM_EXCLUSION_START_Y = GAME_CONFIG.run.playfieldBottomExclusionStartY;
 const ENEMY_PLACEMENT_PADDING = GAME_CONFIG.run.enemyPlacementPadding;
 const MAX_PLACEMENT_RETRIES = GAME_CONFIG.run.maxPlacementRetries;
 const MIXED_PLACEMENT_PADDING = GAME_CONFIG.run.mixedPlacementPadding;
@@ -196,6 +197,10 @@ function isPlacementInsidePlayfield(
   radius: number,
   boundary: ArenaSnapshot["playfieldBoundary"]
 ): boolean {
+  if (point.y + radius > PLAYFIELD_BOTTOM_EXCLUSION_START_Y + Number.EPSILON) {
+    return false;
+  }
+
   if (!isPointInsidePlayfield(point, boundary.points)) {
     return false;
   }
@@ -328,8 +333,8 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
       kind: "OBSTACLE",
       minX: 0.68,
       maxX: 0.76,
-      minY: 0.44,
-      maxY: 0.54,
+      minY: 0.4,
+      maxY: 0.5,
       presentation: createPresentation("bumper-round-silver", 16, 1.08)
     },
     {
@@ -337,8 +342,8 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
       kind: "OBSTACLE",
       minX: 0.56,
       maxX: 0.68,
-      minY: 0.58,
-      maxY: 0.7,
+      minY: 0.54,
+      maxY: 0.64,
       presentation: createPresentation("bumper-round-silver", 28, 1.02)
     }
   ];
@@ -366,8 +371,8 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
       kind: "ENEMY",
       minX: 0.52,
       maxX: 0.7,
-      minY: 0.46,
-      maxY: 0.6,
+      minY: 0.42,
+      maxY: 0.54,
       presentation: createPresentation("enemy-orb-red", 4, 1.04)
     },
     {
@@ -375,8 +380,8 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
       kind: "ENEMY",
       minX: 0.42,
       maxX: 0.58,
-      minY: 0.68,
-      maxY: 0.8,
+      minY: 0.58,
+      maxY: 0.7,
       presentation: createPresentation("enemy-orb-red", -14, 0.98)
     }
   ];
