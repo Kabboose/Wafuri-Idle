@@ -146,6 +146,9 @@ export function RunReplay({
     () => getPlayfieldClipPath(runResult.playback),
     [runResult.playback]
   );
+  const activeFlipperId = frame.activeCollision?.collisionKind === "BALL_FLIPPER"
+    ? frame.activeCollision.targetEntityId
+    : null;
   return (
     <section className="run-replay-card">
       <div className="run-replay-stage">
@@ -232,7 +235,7 @@ export function RunReplay({
               .map((entity) => (
                 <div
                   key={entity.id}
-                  className="replay-entity replay-flipper"
+                  className={`replay-entity replay-flipper ${entity.id === "flipper-left" ? "replay-flipper-left" : "replay-flipper-right"} ${activeFlipperId === entity.id ? "is-active" : ""}`}
                   style={getEntityPresentationStyle(entity)}
                 />
               ))}
