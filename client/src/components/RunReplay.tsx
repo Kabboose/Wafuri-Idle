@@ -173,6 +173,19 @@ export function RunReplay({
 
           <div className="run-replay-arena">
             {runResult.playback.entities
+              .filter((entity) => entity.kind === "OBSTACLE")
+              .map((entity) => (
+                <div
+                  key={entity.id}
+                  className="replay-entity replay-obstacle"
+                  style={{
+                    left: `${entity.spawnX * 100}%`,
+                    top: `${entity.spawnY * 100}%`
+                  }}
+                />
+              ))}
+
+            {runResult.playback.entities
               .filter((entity) => entity.kind === "ENEMY")
               .map((entity) => (
                 <div

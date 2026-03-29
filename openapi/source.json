@@ -937,7 +937,7 @@
           },
           "kind": {
             "type": "string",
-            "enum": ["BALL", "ENEMY", "ARENA"]
+            "enum": ["BALL", "ENEMY", "ARENA", "OBSTACLE"]
           },
           "spawnX": {
             "type": "number"
@@ -1016,7 +1016,7 @@
           },
           "collisionKind": {
             "type": "string",
-            "enum": ["BALL_ENEMY", "BALL_WALL"]
+            "enum": ["BALL_ENEMY", "BALL_WALL", "BALL_OBSTACLE"]
           },
           "x": {
             "type": "number"

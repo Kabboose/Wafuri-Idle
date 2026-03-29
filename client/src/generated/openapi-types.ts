@@ -159,7 +159,7 @@ export type PlaybackArena = {
 
 export type PlaybackEntity = {
   "id": string;
-  "kind": "BALL" | "ENEMY" | "ARENA";
+  "kind": "BALL" | "ENEMY" | "ARENA" | "OBSTACLE";
   "spawnX": number;
   "spawnY": number;
 };
@@ -180,7 +180,7 @@ export type PlaybackCollisionEvent = {
   "timelineTimestampMs": number;
   "sourceEntityId": string;
   "targetEntityId": string;
-  "collisionKind": "BALL_ENEMY" | "BALL_WALL";
+  "collisionKind": "BALL_ENEMY" | "BALL_WALL" | "BALL_OBSTACLE";
   "x": number;
   "y": number;
 };

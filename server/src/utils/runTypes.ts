@@ -44,7 +44,7 @@ export interface ArenaSnapshot {
 /** Entity participating in run playback with a deterministic normalized spawn position. */
 export interface PlaybackEntity {
   id: string;
-  kind: "BALL" | "ENEMY" | "ARENA";
+  kind: "BALL" | "ENEMY" | "ARENA" | "OBSTACLE";
   spawnX: number;
   spawnY: number;
 }
@@ -67,7 +67,7 @@ export interface CollisionEvent {
   timelineTimestampMs: number;
   sourceEntityId: string;
   targetEntityId: string;
-  collisionKind: "BALL_ENEMY" | "BALL_WALL";
+  collisionKind: "BALL_ENEMY" | "BALL_WALL" | "BALL_OBSTACLE";
   x: number;
   y: number;
 }

@@ -1063,7 +1063,8 @@
             "enum": [
               "BALL",
               "ENEMY",
-              "ARENA"
+              "ARENA",
+              "OBSTACLE"
             ]
           },
           "spawnX": {
@@ -1149,7 +1150,8 @@
             "type": "string",
             "enum": [
               "BALL_ENEMY",
-              "BALL_WALL"
+              "BALL_WALL",
+              "BALL_OBSTACLE"
             ]
           },
           "x": {

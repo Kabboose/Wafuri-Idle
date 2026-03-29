@@ -29,6 +29,8 @@ type SimulatedHit = {
 };
 
 type EnemyTarget = PlaybackEntity & { kind: "ENEMY" };
+type ObstacleTarget = PlaybackEntity & { kind: "OBSTACLE" };
+type CircularTarget = EnemyTarget | ObstacleTarget;
 type Point = { x: number; y: number };
 type WallCollision = Point & {
   normal: Point;
@@ -40,10 +42,15 @@ type EnemyCollision = Point & {
   normal: Point;
   distance: number;
 };
+type ObstacleCollision = Point & {
+  obstacle: ObstacleTarget;
+  normal: Point;
+  distance: number;
+};
 type MotionStep = {
   from: Point;
   to: Point;
-  collision: WallCollision | EnemyCollision;
+  collision: WallCollision | EnemyCollision | ObstacleCollision;
   hit?: SimulatedHit;
 };
 
@@ -93,26 +100,40 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
     {
       id: "enemy-1",
       kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.18, 0.3),
-      spawnY: normalizePosition(nextRandom, 0.18, 0.28)
+      spawnX: normalizePosition(nextRandom, 0.12, 0.24),
+      spawnY: normalizePosition(nextRandom, 0.14, 0.22)
     },
     {
       id: "enemy-2",
       kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.68, 0.82),
-      spawnY: normalizePosition(nextRandom, 0.3, 0.42)
+      spawnX: normalizePosition(nextRandom, 0.7, 0.86),
+      spawnY: normalizePosition(nextRandom, 0.24, 0.36)
     },
     {
       id: "enemy-3",
       kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.42, 0.58),
-      spawnY: normalizePosition(nextRandom, 0.5, 0.62)
+      spawnX: normalizePosition(nextRandom, 0.46, 0.62),
+      spawnY: normalizePosition(nextRandom, 0.46, 0.58)
     },
     {
       id: "enemy-4",
       kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.22, 0.36),
-      spawnY: normalizePosition(nextRandom, 0.72, 0.84)
+      spawnX: normalizePosition(nextRandom, 0.26, 0.4),
+      spawnY: normalizePosition(nextRandom, 0.68, 0.78)
+    }
+  ];
+  const obstacles: PlaybackEntity[] = [
+    {
+      id: "obstacle-1",
+      kind: "OBSTACLE",
+      spawnX: normalizePosition(nextRandom, 0.24, 0.34),
+      spawnY: normalizePosition(nextRandom, 0.34, 0.46)
+    },
+    {
+      id: "obstacle-2",
+      kind: "OBSTACLE",
+      spawnX: normalizePosition(nextRandom, 0.64, 0.76),
+      spawnY: normalizePosition(nextRandom, 0.52, 0.64)
     }
   ];
 
@@ -147,6 +168,7 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
       spawnX: 0.5,
       spawnY: 0.96
     },
+    ...obstacles,
     ...enemies
   ];
 }
@@ -318,29 +340,31 @@ function getWallCollision(start: Point, direction: Point): WallCollision {
 }
 
 /** Computes the first enemy collision intersected by the current heading, if any. */
-function getEnemyCollision(
+function getCircularCollision(
   start: Point,
   direction: Point,
-  enemies: EnemyTarget[],
+  targets: CircularTarget[],
   enemySequenceOrder: Map<string, number>
-): EnemyCollision | null {
-  const collisions = enemies.flatMap((enemy) => {
-    const offsetX = start.x - enemy.spawnX;
-    const offsetY = start.y - enemy.spawnY;
+): EnemyCollision | ObstacleCollision | null {
+  const collisions: Array<EnemyCollision | ObstacleCollision> = [];
+
+  for (const target of targets) {
+    const offsetX = start.x - target.spawnX;
+    const offsetY = start.y - target.spawnY;
     const projection = direction.x * offsetX + direction.y * offsetY;
     const centerDistanceSquared = offsetX * offsetX + offsetY * offsetY;
     const radiusSquared = PLAYBACK_ENEMY_COLLISION_RADIUS * PLAYBACK_ENEMY_COLLISION_RADIUS;
     const discriminant = projection * projection - (centerDistanceSquared - radiusSquared);
 
     if (discriminant < 0) {
-      return [];
+      continue;
     }
 
     const root = Math.sqrt(discriminant);
     const distance = -projection - root;
 
     if (distance <= Number.EPSILON) {
-      return [];
+      continue;
     }
 
     const contactPoint = {
@@ -348,27 +372,47 @@ function getEnemyCollision(
       y: start.y + direction.y * distance
     };
     const normal = normalizeVector(
-      contactPoint.x - enemy.spawnX,
-      contactPoint.y - enemy.spawnY,
+      contactPoint.x - target.spawnX,
+      contactPoint.y - target.spawnY,
       { x: 0, y: -1 }
     );
 
-    return [{
-      enemy,
+    if (target.kind === "ENEMY") {
+      collisions.push({
+        enemy: target,
+        x: clampNormalized(contactPoint.x),
+        y: clampNormalized(contactPoint.y),
+        normal,
+        distance
+      });
+      continue;
+    }
+
+    collisions.push({
+      obstacle: target,
       x: clampNormalized(contactPoint.x),
       y: clampNormalized(contactPoint.y),
       normal,
       distance
-    }];
-  });
+    });
+  }
 
-  return collisions.reduce<EnemyCollision | null>((closest, candidate) => {
+  const getCollisionPriority = (collision: EnemyCollision | ObstacleCollision): number => {
+    if ("enemy" in collision) {
+      return enemySequenceOrder.get(collision.enemy.id) ?? Number.MAX_SAFE_INTEGER;
+    }
+
+    return Number.MAX_SAFE_INTEGER;
+  };
+
+  return collisions.reduce<EnemyCollision | ObstacleCollision | null>((closest, candidate) => {
     if (
       !closest ||
       candidate.distance < closest.distance - Number.EPSILON ||
-      (Math.abs(candidate.distance - closest.distance) <= Number.EPSILON &&
-        (enemySequenceOrder.get(candidate.enemy.id) ?? Number.MAX_SAFE_INTEGER) <
-          (enemySequenceOrder.get(closest.enemy.id) ?? Number.MAX_SAFE_INTEGER))
+      (
+        Math.abs(candidate.distance - closest.distance) <= Number.EPSILON &&
+        getCollisionPriority(candidate) < getCollisionPriority(closest)
+      )
     ) {
       return candidate;
     }
@@ -497,6 +541,7 @@ function createRunFinisherTrigger(durationMs: number, ballEntityId: string): Tri
 function createMotionTimeline(seed: string, entities: PlaybackEntity[], durationMs: number, hits: SimulatedHit[]): PlaybackEvent[] {
   const ballEntity = entities.find((entity) => entity.kind === "BALL");
   const enemyEntities = entities.filter((entity): entity is EnemyTarget => entity.kind === "ENEMY");
+  const obstacleEntities = entities.filter((entity): entity is ObstacleTarget => entity.kind === "OBSTACLE");
 
   if (!ballEntity || enemyEntities.length === 0 || durationMs <= 0 || hits.length === 0) {
     return [];
@@ -515,12 +560,18 @@ function createMotionTimeline(seed: string, entities: PlaybackEntity[], duration
     -1,
     { x: 0.42, y: -1 }
   );
+  const maxSteps = hits.length * 16;
 
-  for (let hitIndex = 0; hitIndex < hits.length; ) {
+  for (let hitIndex = 0; hitIndex < hits.length && steps.length < maxSteps; ) {
     const wallCollision = getWallCollision(currentPoint, currentDirection);
-    const enemyCollision = getEnemyCollision(currentPoint, currentDirection, enemyEntities, enemySequenceOrder);
-    const firstCollision = enemyCollision && enemyCollision.distance < wallCollision.distance
-      ? enemyCollision
+    const circularCollision = getCircularCollision(
+      currentPoint,
+      currentDirection,
+      [...enemyEntities, ...obstacleEntities],
+      enemySequenceOrder
+    );
+    const firstCollision = circularCollision && circularCollision.distance < wallCollision.distance
+      ? circularCollision
       : wallCollision;
 
     steps.push({
@@ -545,6 +596,10 @@ function createMotionTimeline(seed: string, entities: PlaybackEntity[], duration
     if ("enemy" in firstCollision) {
       hitIndex += 1;
     }
+  }
+
+  if (steps.length >= maxSteps && steps.filter((step) => "enemy" in step.collision).length < hits.length) {
+    throw new Error("Playback motion exceeded deterministic step budget before resolving enemy hits");
   }
 
   if (steps.length === 0) {
@@ -619,8 +674,8 @@ function createMotionTimeline(seed: string, entities: PlaybackEntity[], duration
         kind: "COLLISION",
         timelineTimestampMs: segmentEnd,
         sourceEntityId: ballEntity.id,
-        targetEntityId: step.collision.targetEntityId,
-        collisionKind: "BALL_WALL",
+        targetEntityId: "obstacle" in step.collision ? step.collision.obstacle.id : step.collision.targetEntityId,
+        collisionKind: "obstacle" in step.collision ? "BALL_OBSTACLE" : "BALL_WALL",
         x: step.to.x,
         y: step.to.y
       });
