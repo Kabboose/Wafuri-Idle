@@ -39,7 +39,6 @@ export type PlaybackFrame = {
   activeDamage: PlaybackDamageEvent | null;
   activeComboMilestone: UiCue | null;
   finishCueActive: boolean;
-  showSummary: boolean;
 };
 
 const COLLISION_CUE_LIFETIME_MS = 180;
@@ -247,7 +246,6 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
     activeCollision,
     activeDamage,
     activeComboMilestone,
-    finishCueActive,
-    showSummary: clampedTimelineMs >= playback.durationMs
+    finishCueActive
   };
 }

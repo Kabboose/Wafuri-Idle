@@ -52,6 +52,40 @@ function getPathSegmentStyle(pathEvent: PlaybackBallPathEvent, timelineMs: numbe
   };
 }
 
+/** Maps optional presentation metadata into lightweight CSS variables for rendering. */
+function getEntityPresentationStyle(entity: RunResult["playback"]["entities"][number]): CSSProperties {
+  return {
+    left: `${entity.spawnX * 100}%`,
+    top: `${entity.spawnY * 100}%`,
+    "--replay-rotation": `${entity.presentation?.rotationDegrees ?? 0}deg`,
+    "--replay-scale": `${entity.presentation?.scale ?? 1}`
+  } as CSSProperties;
+}
+
+/** Maps a boundary segment into a visible board-rail segment. */
+function getBoundarySegmentStyle(
+  segment: RunResult["playback"]["arena"]["playfieldBoundary"]["segments"][number]
+): CSSProperties {
+  const deltaX = segment.toX - segment.fromX;
+  const deltaY = segment.toY - segment.fromY;
+  const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  const angle = Math.atan2(deltaY, deltaX);
+
+  return {
+    left: `${segment.fromX * 100}%`,
+    top: `${segment.fromY * 100}%`,
+    width: `${distance * 100}%`,
+    transform: `translateY(-50%) rotate(${angle}rad)`
+  };
+}
+
+/** Converts the authored playfield boundary points into a CSS clip-path polygon. */
+function getPlayfieldClipPath(playback: RunResult["playback"]): string {
+  return `polygon(${playback.arena.playfieldBoundary.points
+    .map((point) => `${point.x * 100}% ${point.y * 100}%`)
+    .join(", ")})`;
+}
+
 /** Renders a deterministic replay view from the server-authored playback timeline. */
 export function RunReplay({
   runResult,
@@ -108,7 +142,10 @@ export function RunReplay({
     ),
     [runResult.playback.events]
   );
-
+  const playfieldClipPath = useMemo(
+    () => getPlayfieldClipPath(runResult.playback),
+    [runResult.playback]
+  );
   return (
     <section className="run-replay-card">
       <div className="run-replay-stage">
@@ -153,7 +190,13 @@ export function RunReplay({
             <div className={`run-replay-finish-beat ${frame.finishCueActive ? "is-emphasized" : ""}`}>Run Complete</div>
           ) : null}
 
-          <div className="run-replay-path-layer" aria-hidden="true">
+          <div
+            className="run-replay-path-layer"
+            aria-hidden="true"
+            style={{
+              clipPath: playfieldClipPath
+            }}
+          >
             {ballPathEvents.map((pathEvent, index) => {
               const pathStyle = getPathSegmentStyle(pathEvent, frame.timelineMs);
 
@@ -172,16 +215,25 @@ export function RunReplay({
           </div>
 
           <div className="run-replay-arena">
+            <div className="run-replay-playfield-mask" aria-hidden="true" style={{ clipPath: playfieldClipPath }} />
+
+            <div className="run-replay-rail-layer" aria-hidden="true">
+              {runResult.playback.arena.playfieldBoundary.segments.map((segment) => (
+                <div
+                  key={segment.id}
+                  className="run-replay-rail-segment"
+                  style={getBoundarySegmentStyle(segment)}
+                />
+              ))}
+            </div>
+
             {runResult.playback.entities
               .filter((entity) => entity.kind === "OBSTACLE")
               .map((entity) => (
                 <div
                   key={entity.id}
                   className="replay-entity replay-obstacle"
-                  style={{
-                    left: `${entity.spawnX * 100}%`,
-                    top: `${entity.spawnY * 100}%`
-                  }}
+                  style={getEntityPresentationStyle(entity)}
                 />
               ))}
 
@@ -191,10 +243,7 @@ export function RunReplay({
                 <div
                   key={entity.id}
                   className="replay-entity replay-enemy"
-                  style={{
-                    left: `${entity.spawnX * 100}%`,
-                    top: `${entity.spawnY * 100}%`
-                  }}
+                  style={getEntityPresentationStyle(entity)}
                 />
               ))}
 

@@ -1027,7 +1027,8 @@
         "required": [
           "width",
           "height",
-          "zones"
+          "zones",
+          "playfieldBoundary"
         ],
         "properties": {
           "width": {
@@ -1042,8 +1043,207 @@
               "type": "object",
               "additionalProperties": false
             }
+          },
+          "playfieldBoundary": {
+            "$ref": "#/components/schemas/PlayfieldBoundary"
           }
         }
+      },
+      "ArenaBoundaryPoint": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "x",
+          "y"
+        ],
+        "properties": {
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          }
+        }
+      },
+      "ArenaBoundarySegment": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "fromX",
+          "fromY",
+          "toX",
+          "toY"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fromX": {
+            "type": "number"
+          },
+          "fromY": {
+            "type": "number"
+          },
+          "toX": {
+            "type": "number"
+          },
+          "toY": {
+            "type": "number"
+          }
+        }
+      },
+      "PlayfieldBoundary": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "points",
+          "segments"
+        ],
+        "properties": {
+          "points": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArenaBoundaryPoint"
+            }
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ArenaBoundarySegment"
+            }
+          }
+        }
+      },
+      "PlaybackPresentation": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "assetId"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "rotationDegrees": {
+            "type": "number"
+          },
+          "scale": {
+            "type": "number"
+          }
+        }
+      },
+      "PlaybackCircleCollisionShape": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "offsetX",
+          "offsetY",
+          "radius"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "CIRCLE"
+            ]
+          },
+          "offsetX": {
+            "type": "number"
+          },
+          "offsetY": {
+            "type": "number"
+          },
+          "radius": {
+            "type": "number"
+          }
+        }
+      },
+      "PlaybackBoxCollisionShape": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "offsetX",
+          "offsetY",
+          "width",
+          "height"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "BOX"
+            ]
+          },
+          "offsetX": {
+            "type": "number"
+          },
+          "offsetY": {
+            "type": "number"
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "rotationDegrees": {
+            "type": "number"
+          }
+        }
+      },
+      "PlaybackPolygonCollisionShape": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "points"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "POLYGON"
+            ]
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "x",
+                "y"
+              ],
+              "properties": {
+                "x": {
+                  "type": "number"
+                },
+                "y": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "rotationDegrees": {
+            "type": "number"
+          }
+        }
+      },
+      "PlaybackCollisionShape": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/PlaybackCircleCollisionShape"
+          },
+          {
+            "$ref": "#/components/schemas/PlaybackBoxCollisionShape"
+          },
+          {
+            "$ref": "#/components/schemas/PlaybackPolygonCollisionShape"
+          }
+        ]
       },
       "PlaybackEntity": {
         "type": "object",
@@ -1072,6 +1272,12 @@
           },
           "spawnY": {
             "type": "number"
+          },
+          "presentation": {
+            "$ref": "#/components/schemas/PlaybackPresentation"
+          },
+          "collision": {
+            "$ref": "#/components/schemas/PlaybackCollisionShape"
           }
         }
       },

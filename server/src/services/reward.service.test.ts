@@ -9,7 +9,11 @@ const playbackFixture: RunPlayback = {
   arena: {
     width: 1,
     height: 1,
-    zones: []
+    zones: [],
+    playfieldBoundary: {
+      points: [],
+      segments: []
+    }
   },
   entities: [],
   events: []

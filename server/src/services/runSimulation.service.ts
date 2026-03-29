@@ -1,5 +1,7 @@
 import { GAME_CONFIG } from "../config/index.js";
 import type {
+  ArenaBoundarySegment,
+  ArenaSnapshot,
   PhaseEvent,
   PlaybackEntity,
   PlaybackEvent,
@@ -18,8 +20,9 @@ const PLAYBACK_ENEMY_COLLISION_RADIUS = GAME_CONFIG.run.playbackEnemyCollisionRa
 const PLAYBACK_FINISHER_LEAD_MS = GAME_CONFIG.run.playbackFinisherLeadMs;
 const PLAYBACK_WALL_REBOUND_MAX_NORMAL_COMPONENT = GAME_CONFIG.run.playbackWallReboundMaxNormalComponent;
 const PLAYBACK_WALL_REBOUND_MIN_NORMAL_COMPONENT = GAME_CONFIG.run.playbackWallReboundMinNormalComponent;
-const PLAYBACK_WALL_INSET = GAME_CONFIG.run.playbackWallInset;
 const SPEED_SCALE = GAME_CONFIG.run.speedScale;
+const CONTAINER_TOP_WALL_ID = "container-wall-top";
+const CONTAINER_BOTTOM_WALL_ID = "container-wall-bottom";
 
 type SimulatedHit = {
   damage: bigint;
@@ -93,6 +96,25 @@ function normalizePosition(nextRandom: () => number, min: number, max: number): 
   return min + nextRandom() * (max - min);
 }
 
+/** Creates shared presentation metadata for a playback entity. */
+function createPresentation(assetId: string, rotationDegrees?: number, scale?: number) {
+  return {
+    assetId,
+    rotationDegrees,
+    scale
+  };
+}
+
+/** Creates a local circle collision shape anchored at the entity origin. */
+function createCircleCollision(radius: number) {
+  return {
+    type: "CIRCLE" as const,
+    offsetX: 0,
+    offsetY: 0,
+    radius
+  };
+}
+
 /** Builds the deterministic entity layout for the run playback snapshot. */
 function createPlaybackEntities(seed: string): PlaybackEntity[] {
   const nextRandom = createSeededRng(`${seed}:playback-layout`);
@@ -100,40 +122,60 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
     {
       id: "enemy-1",
       kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.12, 0.24),
-      spawnY: normalizePosition(nextRandom, 0.14, 0.22)
+      spawnX: normalizePosition(nextRandom, 0.18, 0.32),
+      spawnY: normalizePosition(nextRandom, 0.14, 0.22),
+      presentation: createPresentation("enemy-orb-red", -8, 1),
+      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
     },
     {
       id: "enemy-2",
       kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.7, 0.86),
-      spawnY: normalizePosition(nextRandom, 0.24, 0.36)
+      spawnX: normalizePosition(nextRandom, 0.72, 0.88),
+      spawnY: normalizePosition(nextRandom, 0.26, 0.4),
+      presentation: createPresentation("enemy-orb-red", 12, 1.02),
+      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
     },
     {
       id: "enemy-3",
       kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.46, 0.62),
-      spawnY: normalizePosition(nextRandom, 0.46, 0.58)
+      spawnX: normalizePosition(nextRandom, 0.6, 0.76),
+      spawnY: normalizePosition(nextRandom, 0.46, 0.62),
+      presentation: createPresentation("enemy-orb-red", 4, 1.04),
+      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
     },
     {
       id: "enemy-4",
       kind: "ENEMY",
-      spawnX: normalizePosition(nextRandom, 0.26, 0.4),
-      spawnY: normalizePosition(nextRandom, 0.68, 0.78)
+      spawnX: normalizePosition(nextRandom, 0.46, 0.6),
+      spawnY: normalizePosition(nextRandom, 0.68, 0.82),
+      presentation: createPresentation("enemy-orb-red", -14, 0.98),
+      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
     }
   ];
   const obstacles: PlaybackEntity[] = [
     {
       id: "obstacle-1",
       kind: "OBSTACLE",
-      spawnX: normalizePosition(nextRandom, 0.24, 0.34),
-      spawnY: normalizePosition(nextRandom, 0.34, 0.46)
+      spawnX: normalizePosition(nextRandom, 0.12, 0.18),
+      spawnY: normalizePosition(nextRandom, 0.24, 0.36),
+      presentation: createPresentation("bumper-round-silver", -18, 1),
+      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
     },
     {
       id: "obstacle-2",
       kind: "OBSTACLE",
-      spawnX: normalizePosition(nextRandom, 0.64, 0.76),
-      spawnY: normalizePosition(nextRandom, 0.52, 0.64)
+      spawnX: normalizePosition(nextRandom, 0.82, 0.9),
+      spawnY: normalizePosition(nextRandom, 0.42, 0.56),
+      presentation: createPresentation("bumper-round-silver", 16, 1.08),
+      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
+    },
+    {
+      id: "obstacle-3",
+      kind: "OBSTACLE",
+      spawnX: normalizePosition(nextRandom, 0.74, 0.84),
+      spawnY: normalizePosition(nextRandom, 0.62, 0.76),
+      presentation: createPresentation("bumper-round-silver", 28, 1.02),
+      collision: createCircleCollision(PLAYBACK_ENEMY_COLLISION_RADIUS)
     }
   ];
 
@@ -142,35 +184,56 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
       id: "ball-1",
       kind: "BALL",
       spawnX: 0.52,
-      spawnY: 0.9
-    },
-    {
-      id: "wall-left",
-      kind: "ARENA",
-      spawnX: 0.04,
-      spawnY: 0.5
-    },
-    {
-      id: "wall-right",
-      kind: "ARENA",
-      spawnX: 0.96,
-      spawnY: 0.5
-    },
-    {
-      id: "wall-top",
-      kind: "ARENA",
-      spawnX: 0.5,
-      spawnY: 0.04
-    },
-    {
-      id: "wall-bottom",
-      kind: "ARENA",
-      spawnX: 0.5,
-      spawnY: 0.96
+      spawnY: 0.9,
+      presentation: createPresentation("ball-default", 0, 1),
+      collision: createCircleCollision(0.02)
     },
     ...obstacles,
     ...enemies
   ];
+}
+
+/** Creates the authored inner playfield boundary used as the true gameplay wall. */
+function createPlayfieldBoundary(): ArenaSnapshot["playfieldBoundary"] {
+  const points = [
+    { x: 0.08, y: 0 },
+    { x: 0.92, y: 0 },
+    { x: 0.88, y: 0.42 },
+    { x: 0.78, y: 1 },
+    { x: 0.22, y: 1 },
+    { x: 0.12, y: 0.42 }
+  ];
+  const leftWallPoints = [points[4], points[5], points[0]];
+  const rightWallPoints = [points[1], points[2], points[3]];
+  const segments: ArenaBoundarySegment[] = [
+    ...leftWallPoints.slice(0, -1).map((point, index) => {
+      const nextPoint = leftWallPoints[index + 1];
+
+      return {
+        id: `playfield-wall-left-${index + 1}`,
+        fromX: point.x,
+        fromY: point.y,
+        toX: nextPoint.x,
+        toY: nextPoint.y
+      };
+    }),
+    ...rightWallPoints.slice(0, -1).map((point, index) => {
+      const nextPoint = rightWallPoints[index + 1];
+
+      return {
+        id: `playfield-wall-right-${index + 1}`,
+        fromX: point.x,
+        fromY: point.y,
+        toX: nextPoint.x,
+        toY: nextPoint.y
+      };
+    })
+  ];
+
+  return {
+    points,
+    segments
+  };
 }
 
 /** Clamps normalized coordinates into the supported playback space. */
@@ -218,32 +281,20 @@ function tuneWallReboundDirection(reflectedDirection: Point, wallNormal: Point):
     Math.max(PLAYBACK_WALL_REBOUND_MAX_NORMAL_COMPONENT, minNormalComponent),
     1
   );
-
-  if (Math.abs(wallNormal.x) > Number.EPSILON) {
-    const clampedNormalComponent = Math.min(
-      Math.max(Math.abs(reflectedDirection.x), minNormalComponent),
-      maxNormalComponent
-    );
-    const tangentMagnitude = Math.sqrt(Math.max(1 - clampedNormalComponent * clampedNormalComponent, 0));
-    const tangentSign = reflectedDirection.y < 0 ? -1 : 1;
-
-    return {
-      x: wallNormal.x * clampedNormalComponent,
-      y: tangentSign * tangentMagnitude
-    };
-  }
-
   const clampedNormalComponent = Math.min(
-    Math.max(Math.abs(reflectedDirection.y), minNormalComponent),
+    Math.max(Math.abs(reflectedDirection.x * wallNormal.x + reflectedDirection.y * wallNormal.y), minNormalComponent),
     maxNormalComponent
   );
+  const tangent = normalizeVector(-wallNormal.y, wallNormal.x, { x: 1, y: 0 });
+  const tangentDot = reflectedDirection.x * tangent.x + reflectedDirection.y * tangent.y;
   const tangentMagnitude = Math.sqrt(Math.max(1 - clampedNormalComponent * clampedNormalComponent, 0));
-  const tangentSign = reflectedDirection.x < 0 ? -1 : 1;
+  const tangentSign = tangentDot < 0 ? -1 : 1;
 
-  return {
-    x: tangentSign * tangentMagnitude,
-    y: wallNormal.y * clampedNormalComponent
-  };
+  return normalizeVector(
+    wallNormal.x * clampedNormalComponent + tangent.x * tangentSign * tangentMagnitude,
+    wallNormal.y * clampedNormalComponent + tangent.y * tangentSign * tangentMagnitude,
+    reflectedDirection
+  );
 }
 
 /** Produces a deterministic enemy order so hits cycle through the board in a replay-friendly way. */
@@ -259,72 +310,116 @@ function createEnemySequence(seed: string, enemyEntities: EnemyTarget[]): EnemyT
     .map(({ entity }) => entity);
 }
 
-/** Computes the first valid wall contact for the current heading. */
-function getWallCollision(start: Point, direction: Point): WallCollision {
-  const candidates: WallCollision[] = [];
+/** Computes the first collision against the authored inner playfield boundary. */
+function getPlayfieldBoundaryCollision(
+  start: Point,
+  direction: Point,
+  boundarySegments: ArenaBoundarySegment[]
+): WallCollision | null {
+  const collisions: WallCollision[] = [];
 
-  if (direction.x < -Number.EPSILON) {
-    const distance = (PLAYBACK_WALL_INSET - start.x) / direction.x;
+  for (const segment of boundarySegments) {
+    const segmentVector = {
+      x: segment.toX - segment.fromX,
+      y: segment.toY - segment.fromY
+    };
+    const cross = direction.x * segmentVector.y - direction.y * segmentVector.x;
 
-    if (distance > Number.EPSILON) {
-      candidates.push({
-        x: PLAYBACK_WALL_INSET,
-        y: clampNormalized(start.y + direction.y * distance),
-        normal: { x: 1, y: 0 },
-        targetEntityId: "wall-left",
-        distance
-      });
+    if (Math.abs(cross) <= Number.EPSILON) {
+      continue;
     }
+
+    const toSegmentStart = {
+      x: segment.fromX - start.x,
+      y: segment.fromY - start.y
+    };
+    const distance = (toSegmentStart.x * segmentVector.y - toSegmentStart.y * segmentVector.x) / cross;
+    const segmentInterpolation = (toSegmentStart.x * direction.y - toSegmentStart.y * direction.x) / cross;
+
+    if (distance <= Number.EPSILON || segmentInterpolation < 0 || segmentInterpolation > 1) {
+      continue;
+    }
+
+    const contactPoint = {
+      x: clampNormalized(start.x + direction.x * distance),
+      y: clampNormalized(start.y + direction.y * distance)
+    };
+    const normal = normalizeVector(-segmentVector.y, segmentVector.x, { x: 0, y: -1 });
+
+    collisions.push({
+      x: contactPoint.x,
+      y: contactPoint.y,
+      normal,
+      targetEntityId: segment.id,
+      distance
+    });
   }
 
-  if (direction.x > Number.EPSILON) {
-    const distance = ((1 - PLAYBACK_WALL_INSET) - start.x) / direction.x;
-
-    if (distance > Number.EPSILON) {
-      candidates.push({
-        x: 1 - PLAYBACK_WALL_INSET,
-        y: clampNormalized(start.y + direction.y * distance),
-        normal: { x: -1, y: 0 },
-        targetEntityId: "wall-right",
-        distance
-      });
-    }
-  }
-
-  if (direction.y < -Number.EPSILON) {
-    const distance = (PLAYBACK_WALL_INSET - start.y) / direction.y;
-
-    if (distance > Number.EPSILON) {
-      candidates.push({
-        x: clampNormalized(start.x + direction.x * distance),
-        y: PLAYBACK_WALL_INSET,
-        normal: { x: 0, y: 1 },
-        targetEntityId: "wall-top",
-        distance
-      });
-    }
-  }
-
-  if (direction.y > Number.EPSILON) {
-    const distance = ((1 - PLAYBACK_WALL_INSET) - start.y) / direction.y;
-
-    if (distance > Number.EPSILON) {
-      candidates.push({
-        x: clampNormalized(start.x + direction.x * distance),
-        y: 1 - PLAYBACK_WALL_INSET,
-        normal: { x: 0, y: -1 },
-        targetEntityId: "wall-bottom",
-        distance
-      });
-    }
-  }
-
-  const firstCollision = candidates.reduce<WallCollision | null>((closest, candidate) => {
+  const firstCollision = collisions.reduce<WallCollision | null>((closest, candidate) => {
     if (
       !closest ||
       candidate.distance < closest.distance - Number.EPSILON ||
-      (Math.abs(candidate.distance - closest.distance) <= Number.EPSILON &&
-        candidate.targetEntityId.localeCompare(closest.targetEntityId) < 0)
+      (
+        Math.abs(candidate.distance - closest.distance) <= Number.EPSILON &&
+        candidate.targetEntityId.localeCompare(closest.targetEntityId) < 0
+      )
+    ) {
+      return candidate;
+    }
+
+    return closest;
+  }, null);
+
+  return firstCollision;
+}
+
+/** Computes the first collision against the container top or bottom boundary. */
+function getContainerBoundaryCollision(start: Point, direction: Point): WallCollision | null {
+  if (Math.abs(direction.y) <= Number.EPSILON) {
+    return null;
+  }
+
+  const targetY = direction.y < 0 ? 0 : 1;
+  const distance = (targetY - start.y) / direction.y;
+
+  if (distance <= Number.EPSILON) {
+    return null;
+  }
+
+  const contactX = start.x + direction.x * distance;
+
+  if (contactX < -Number.EPSILON || contactX > 1 + Number.EPSILON) {
+    return null;
+  }
+
+  return {
+    x: clampNormalized(contactX),
+    y: targetY,
+    normal: direction.y < 0 ? { x: 0, y: 1 } : { x: 0, y: -1 },
+    targetEntityId: direction.y < 0 ? CONTAINER_TOP_WALL_ID : CONTAINER_BOTTOM_WALL_ID,
+    distance
+  };
+}
+
+/** Chooses the nearest deterministic wall collision from side rails and container top/bottom. */
+function getWallCollision(
+  start: Point,
+  direction: Point,
+  boundarySegments: ArenaBoundarySegment[]
+): WallCollision {
+  const playfieldBoundaryCollision = getPlayfieldBoundaryCollision(start, direction, boundarySegments);
+  const containerBoundaryCollision = getContainerBoundaryCollision(start, direction);
+  const collisions = [playfieldBoundaryCollision, containerBoundaryCollision]
+    .filter((collision): collision is WallCollision => collision !== null);
+
+  const firstCollision = collisions.reduce<WallCollision | null>((closest, candidate) => {
+    if (
+      !closest ||
+      candidate.distance < closest.distance - Number.EPSILON ||
+      (
+        Math.abs(candidate.distance - closest.distance) <= Number.EPSILON &&
+        candidate.targetEntityId.localeCompare(closest.targetEntityId) < 0
+      )
     ) {
       return candidate;
     }
@@ -433,6 +528,8 @@ function getPlaybackEventTime(event: PlaybackEvent): number {
 /** Validates that a playback timeline is replay-safe and internally consistent. */
 function validatePlayback(playback: RunPlayback): void {
   const entityIds = new Set(playback.entities.map((entity) => entity.id));
+  const boundarySegmentIds = new Set(playback.arena.playfieldBoundary.segments.map((segment) => segment.id));
+  const wallIds = new Set([CONTAINER_TOP_WALL_ID, CONTAINER_BOTTOM_WALL_ID, ...boundarySegmentIds]);
   let previousEventTime = -1;
 
   for (const event of playback.events) {
@@ -461,7 +558,11 @@ function validatePlayback(playback: RunPlayback): void {
     }
 
     if (event.kind === "COLLISION" || event.kind === "DAMAGE") {
-      if (!entityIds.has(event.sourceEntityId) || !entityIds.has(event.targetEntityId)) {
+      const hasValidTargetEntity = event.kind === "COLLISION" && event.collisionKind === "BALL_WALL"
+        ? wallIds.has(event.targetEntityId)
+        : entityIds.has(event.targetEntityId);
+
+      if (!entityIds.has(event.sourceEntityId) || !hasValidTargetEntity) {
         throw new Error("Playback references unknown collision or damage entity");
       }
     }
@@ -538,7 +639,13 @@ function createRunFinisherTrigger(durationMs: number, ballEntityId: string): Tri
 }
 
 /** Builds heading-driven deterministic ball path, collision, damage, and sparse trigger events in normalized space. */
-function createMotionTimeline(seed: string, entities: PlaybackEntity[], durationMs: number, hits: SimulatedHit[]): PlaybackEvent[] {
+function createMotionTimeline(
+  seed: string,
+  entities: PlaybackEntity[],
+  durationMs: number,
+  hits: SimulatedHit[],
+  arena: ArenaSnapshot
+): PlaybackEvent[] {
   const ballEntity = entities.find((entity) => entity.kind === "BALL");
   const enemyEntities = entities.filter((entity): entity is EnemyTarget => entity.kind === "ENEMY");
   const obstacleEntities = entities.filter((entity): entity is ObstacleTarget => entity.kind === "OBSTACLE");
@@ -563,16 +670,20 @@ function createMotionTimeline(seed: string, entities: PlaybackEntity[], duration
   const maxSteps = hits.length * 16;
 
   for (let hitIndex = 0; hitIndex < hits.length && steps.length < maxSteps; ) {
-    const wallCollision = getWallCollision(currentPoint, currentDirection);
+    const boundaryCollision = getWallCollision(
+      currentPoint,
+      currentDirection,
+      arena.playfieldBoundary.segments
+    );
     const circularCollision = getCircularCollision(
       currentPoint,
       currentDirection,
       [...enemyEntities, ...obstacleEntities],
       enemySequenceOrder
     );
-    const firstCollision = circularCollision && circularCollision.distance < wallCollision.distance
+    const firstCollision = circularCollision && circularCollision.distance < boundaryCollision.distance
       ? circularCollision
-      : wallCollision;
+      : boundaryCollision;
 
     steps.push({
       from: currentPoint,
@@ -688,7 +799,13 @@ function createMotionTimeline(seed: string, entities: PlaybackEntity[], duration
 /** Builds the minimal deterministic playback payload for a simulated run. */
 function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]): RunPlayback {
   const entities = createPlaybackEntities(seed);
-  const motionEvents = createMotionTimeline(seed, entities, durationMs, hits);
+  const arena: ArenaSnapshot = {
+    width: 1,
+    height: 1,
+    zones: [],
+    playfieldBoundary: createPlayfieldBoundary()
+  };
+  const motionEvents = createMotionTimeline(seed, entities, durationMs, hits, arena);
   const phaseEvents: PhaseEvent[] = [
     {
       kind: "PHASE",
@@ -713,11 +830,7 @@ function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]):
 
   const playback: RunPlayback = {
     durationMs,
-    arena: {
-      width: 1,
-      height: 1,
-      zones: []
-    },
+    arena,
     entities,
     events
   };

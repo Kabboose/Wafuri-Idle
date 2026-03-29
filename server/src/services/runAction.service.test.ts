@@ -45,17 +45,29 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
   assert.deepEqual(result.runResult.playback.arena, {
     width: 1,
     height: 1,
-    zones: []
+    zones: [],
+    playfieldBoundary: result.runResult.playback.arena.playfieldBoundary
   });
-  assert.equal(result.runResult.playback.entities.length, 11);
+  assert.equal(result.runResult.playback.entities.length, 8);
   assert.deepEqual(result.runResult.playback.entities[0], {
     id: "ball-1",
     kind: "BALL",
     spawnX: 0.52,
-    spawnY: 0.9
+    spawnY: 0.9,
+    presentation: {
+      assetId: "ball-default",
+      rotationDegrees: 0,
+      scale: 1
+    },
+    collision: {
+      type: "CIRCLE",
+      offsetX: 0,
+      offsetY: 0,
+      radius: 0.02
+    }
   });
   assert.equal(result.runResult.playback.entities.filter((entity) => entity.kind === "ENEMY").length, 4);
-  assert.equal(result.runResult.playback.entities.filter((entity) => entity.kind === "OBSTACLE").length, 2);
+  assert.equal(result.runResult.playback.entities.filter((entity) => entity.kind === "OBSTACLE").length, 3);
   assert.deepEqual(result.runResult.playback.events[0], {
     kind: "PHASE",
     timelineTimestampMs: 0,

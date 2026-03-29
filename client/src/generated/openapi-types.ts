@@ -155,13 +155,67 @@ export type PlaybackArena = {
   "width": number;
   "height": number;
   "zones": Array<Record<string, never>>;
+  "playfieldBoundary": PlayfieldBoundary;
 };
+
+export type ArenaBoundaryPoint = {
+  "x": number;
+  "y": number;
+};
+
+export type ArenaBoundarySegment = {
+  "id": string;
+  "fromX": number;
+  "fromY": number;
+  "toX": number;
+  "toY": number;
+};
+
+export type PlayfieldBoundary = {
+  "points": Array<ArenaBoundaryPoint>;
+  "segments": Array<ArenaBoundarySegment>;
+};
+
+export type PlaybackPresentation = {
+  "assetId": string;
+  "rotationDegrees"?: number;
+  "scale"?: number;
+};
+
+export type PlaybackCircleCollisionShape = {
+  "type": "CIRCLE";
+  "offsetX": number;
+  "offsetY": number;
+  "radius": number;
+};
+
+export type PlaybackBoxCollisionShape = {
+  "type": "BOX";
+  "offsetX": number;
+  "offsetY": number;
+  "width": number;
+  "height": number;
+  "rotationDegrees"?: number;
+};
+
+export type PlaybackPolygonCollisionShape = {
+  "type": "POLYGON";
+  "points": Array<{
+  "x": number;
+  "y": number;
+}>;
+  "rotationDegrees"?: number;
+};
+
+export type PlaybackCollisionShape = PlaybackCircleCollisionShape | PlaybackBoxCollisionShape | PlaybackPolygonCollisionShape;
 
 export type PlaybackEntity = {
   "id": string;
   "kind": "BALL" | "ENEMY" | "ARENA" | "OBSTACLE";
   "spawnX": number;
   "spawnY": number;
+  "presentation"?: PlaybackPresentation;
+  "collision"?: PlaybackCollisionShape;
 };
 
 export type PlaybackBallPathEvent = {

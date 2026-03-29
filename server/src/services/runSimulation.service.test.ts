@@ -5,6 +5,9 @@ import { GAME_CONFIG } from "../config/index.js";
 import { simulateRun } from "./runSimulation.service.js";
 import type { PlaybackEvent, RunInput } from "../utils/runTypes.js";
 
+const CONTAINER_TOP_WALL_ID = "container-wall-top";
+const CONTAINER_BOTTOM_WALL_ID = "container-wall-bottom";
+
 function createRunInput(overrides: Partial<RunInput> = {}): RunInput {
   return {
     playerId: "player-1",
@@ -22,13 +25,6 @@ function createRunInput(overrides: Partial<RunInput> = {}): RunInput {
 
 function getPlaybackEventTime(event: PlaybackEvent): number {
   return event.kind === "BALL_PATH" ? event.timelineStartMs : event.timelineTimestampMs;
-}
-
-function isWallBoundaryCoordinate(value: number): boolean {
-  return (
-    Math.abs(value - GAME_CONFIG.run.playbackWallInset) < 0.000001 ||
-    Math.abs(value - (1 - GAME_CONFIG.run.playbackWallInset)) < 0.000001
-  );
 }
 
 function getPathDirection(event: Extract<PlaybackEvent, { kind: "BALL_PATH" }>) {
@@ -65,27 +61,70 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.deepEqual(result.playback.arena, {
     width: 1,
     height: 1,
-    zones: []
+    zones: [],
+    playfieldBoundary: result.playback.arena.playfieldBoundary
   });
-  assert.equal(result.playback.entities.length, 11);
+  assert.equal(result.playback.entities.length, 8);
   assert.deepEqual(result.playback.entities[0], {
     id: "ball-1",
     kind: "BALL",
     spawnX: 0.52,
-    spawnY: 0.9
+    spawnY: 0.9,
+    presentation: {
+      assetId: "ball-default",
+      rotationDegrees: 0,
+      scale: 1
+    },
+    collision: {
+      type: "CIRCLE",
+      offsetX: 0,
+      offsetY: 0,
+      radius: 0.02
+    }
   });
   const enemyEntities = result.playback.entities.filter((entity) => entity.kind === "ENEMY");
   const obstacleEntities = result.playback.entities.filter((entity) => entity.kind === "OBSTACLE");
+  const boundarySegments = result.playback.arena.playfieldBoundary.segments;
+  const boundaryPoints = result.playback.arena.playfieldBoundary.points;
   assert.equal(enemyEntities.length, 4);
-  assert.equal(obstacleEntities.length, 2);
+  assert.equal(obstacleEntities.length, 3);
+  assert.equal(boundarySegments.length, 4);
+  assert.equal(boundaryPoints.length, 6);
   assert.ok(enemyEntities.every((entity) => entity.spawnX >= 0 && entity.spawnX <= 1));
   assert.ok(enemyEntities.every((entity) => entity.spawnY >= 0 && entity.spawnY <= 1));
   assert.ok(obstacleEntities.every((entity) => entity.spawnX >= 0 && entity.spawnX <= 1));
   assert.ok(obstacleEntities.every((entity) => entity.spawnY >= 0 && entity.spawnY <= 1));
-  assert.ok(enemyEntities.some((entity) => entity.spawnX < 0.25 && entity.spawnY < 0.25));
-  assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.68 && entity.spawnY < 0.4));
-  assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.44 && entity.spawnX < 0.64 && entity.spawnY > 0.44 && entity.spawnY < 0.6));
-  assert.ok(enemyEntities.some((entity) => entity.spawnX < 0.42 && entity.spawnY > 0.66));
+  assert.ok(enemyEntities.every((entity) => entity.presentation?.assetId === "enemy-orb-red"));
+  assert.ok(enemyEntities.every((entity) => entity.collision?.type === "CIRCLE"));
+  assert.ok(enemyEntities.every((entity) => entity.collision?.type !== "CIRCLE" || entity.collision.radius === GAME_CONFIG.run.playbackEnemyCollisionRadius));
+  assert.ok(obstacleEntities.every((entity) => entity.presentation?.assetId === "bumper-round-silver"));
+  assert.ok(obstacleEntities.every((entity) => entity.collision?.type === "CIRCLE"));
+  assert.ok(
+    boundarySegments.every(
+      (segment) =>
+        segment.id.startsWith("playfield-wall-left-") || segment.id.startsWith("playfield-wall-right-")
+    )
+  );
+  assert.deepEqual(boundaryPoints[0], { x: 0.08, y: 0 });
+  assert.deepEqual(boundaryPoints[1], { x: 0.92, y: 0 });
+  assert.deepEqual(boundaryPoints[2], { x: 0.88, y: 0.42 });
+  assert.deepEqual(boundaryPoints[3], { x: 0.78, y: 1 });
+  assert.deepEqual(boundaryPoints[4], { x: 0.22, y: 1 });
+  assert.deepEqual(boundaryPoints[5], { x: 0.12, y: 0.42 });
+  assert.ok(boundaryPoints[2]!.x < boundaryPoints[1]!.x);
+  assert.ok(boundaryPoints[5]!.x > boundaryPoints[0]!.x);
+  assert.ok(Math.abs(boundaryPoints[5]!.x - (1 - boundaryPoints[2]!.x)) < 0.000001);
+  assert.equal(boundaryPoints[5]!.y, boundaryPoints[2]!.y);
+  assert.ok(Math.abs(boundaryPoints[4]!.x - (1 - boundaryPoints[3]!.x)) < 0.000001);
+  assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.7 && entity.spawnY < 0.42));
+  assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.58 && entity.spawnY > 0.44 && entity.spawnY < 0.64));
+  assert.ok(enemyEntities.some((entity) => entity.spawnX > 0.44 && entity.spawnX < 0.62 && entity.spawnY > 0.66 && entity.spawnY < 0.84));
+  assert.ok(obstacleEntities.some((entity) => entity.spawnX < 0.24 && entity.spawnY > 0.22 && entity.spawnY < 0.38));
+  assert.ok(obstacleEntities.some((entity) => entity.spawnX > 0.78 && entity.spawnY > 0.4 && entity.spawnY < 0.58));
+  assert.ok(obstacleEntities.some((entity) => entity.spawnX > 0.72 && entity.spawnY > 0.6 && entity.spawnY < 0.78));
+  assert.ok(enemyEntities.filter((entity) => entity.spawnX > 0.5).length >= 3);
+  assert.ok(enemyEntities.every((entity) => entity.spawnY < 0.84));
+  assert.ok(obstacleEntities.every((entity) => entity.spawnY < 0.78));
   assert.equal(result.playback.events[0]?.kind, "PHASE");
   assert.deepEqual(result.playback.events[0], {
     kind: "PHASE",
@@ -140,7 +179,15 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.ok(
     wallCollisionEvents.every(
       (event) =>
-        isWallBoundaryCoordinate(event.x) || isWallBoundaryCoordinate(event.y)
+        event.targetEntityId === CONTAINER_TOP_WALL_ID ||
+        event.targetEntityId === CONTAINER_BOTTOM_WALL_ID ||
+        boundarySegments.some((segment) => segment.id === event.targetEntityId)
+    )
+  );
+  assert.ok(
+    wallCollisionEvents.some(
+      (event) =>
+        event.targetEntityId === CONTAINER_TOP_WALL_ID || event.targetEntityId === CONTAINER_BOTTOM_WALL_ID
     )
   );
 
@@ -249,9 +296,26 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
     if (nextEvent?.kind === "BALL_PATH") {
       const reboundDirection = getPathDirection(nextEvent);
-      const normalComponent = wallCollisionEvents[index]?.targetEntityId === "wall-left" || wallCollisionEvents[index]?.targetEntityId === "wall-right"
-        ? Math.abs(reboundDirection.x)
-        : Math.abs(reboundDirection.y);
+      const boundarySegment = boundarySegments.find((segment) => segment.id === wallCollisionEvents[index]?.targetEntityId);
+      const segmentNormal = boundarySegment
+        ? (() => {
+            const deltaX = boundarySegment.toX - boundarySegment.fromX;
+            const deltaY = boundarySegment.toY - boundarySegment.fromY;
+            const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            return {
+              x: -deltaY / length,
+              y: deltaX / length
+            };
+          })()
+        : wallCollisionEvents[index]?.targetEntityId === CONTAINER_TOP_WALL_ID
+          ? { x: 0, y: 1 }
+          : wallCollisionEvents[index]?.targetEntityId === CONTAINER_BOTTOM_WALL_ID
+            ? { x: 0, y: -1 }
+            : null;
+      const normalComponent = segmentNormal
+        ? Math.abs(reboundDirection.x * segmentNormal.x + reboundDirection.y * segmentNormal.y)
+        : 0;
 
       assert.ok(
         normalComponent >= GAME_CONFIG.run.playbackWallReboundMinNormalComponent - 0.000001
@@ -269,6 +333,8 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   }
 
   const entityIds = new Set(result.playback.entities.map((entity) => entity.id));
+  const boundarySegmentIds = new Set(result.playback.arena.playfieldBoundary.segments.map((segment) => segment.id));
+  const wallIds = new Set([CONTAINER_TOP_WALL_ID, CONTAINER_BOTTOM_WALL_ID, ...boundarySegmentIds]);
   let previousEventTime = -1;
 
   for (const event of result.playback.events) {
@@ -282,7 +348,11 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
     if (event.kind === "COLLISION" || event.kind === "DAMAGE") {
       assert.ok(entityIds.has(event.sourceEntityId));
-      assert.ok(entityIds.has(event.targetEntityId));
+      assert.ok(
+        event.kind === "COLLISION" && event.collisionKind === "BALL_WALL"
+          ? wallIds.has(event.targetEntityId)
+          : entityIds.has(event.targetEntityId)
+      );
     }
 
     if (event.kind === "TRIGGER") {

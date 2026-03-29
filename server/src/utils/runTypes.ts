@@ -39,7 +39,67 @@ export interface ArenaSnapshot {
   width: number;
   height: number;
   zones: Array<Record<string, never>>;
+  playfieldBoundary: PlayfieldBoundary;
 }
+
+/** Local point used by the authored playfield boundary. */
+export interface ArenaBoundaryPoint {
+  x: number;
+  y: number;
+}
+
+/** Directed segment that makes up the authored playfield boundary. */
+export interface ArenaBoundarySegment {
+  id: string;
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+}
+
+/** First-class authored gameplay boundary for the inner playfield shape. */
+export interface PlayfieldBoundary {
+  points: ArenaBoundaryPoint[];
+  segments: ArenaBoundarySegment[];
+}
+
+/** Presentation metadata for future asset-driven playback rendering. */
+export interface PlaybackPresentation {
+  assetId: string;
+  rotationDegrees?: number;
+  scale?: number;
+}
+
+/** Local circle collision metadata anchored at the entity origin. */
+export interface CircleCollisionShape {
+  type: "CIRCLE";
+  offsetX: number;
+  offsetY: number;
+  radius: number;
+}
+
+/** Local box collision metadata anchored at the entity origin. */
+export interface BoxCollisionShape {
+  type: "BOX";
+  offsetX: number;
+  offsetY: number;
+  width: number;
+  height: number;
+  rotationDegrees?: number;
+}
+
+/** Local polygon collision metadata anchored at the entity origin. */
+export interface PolygonCollisionShape {
+  type: "POLYGON";
+  points: Array<{
+    x: number;
+    y: number;
+  }>;
+  rotationDegrees?: number;
+}
+
+/** Supported playback collision-shape models for future board pieces. */
+export type CollisionShape = CircleCollisionShape | BoxCollisionShape | PolygonCollisionShape;
 
 /** Entity participating in run playback with a deterministic normalized spawn position. */
 export interface PlaybackEntity {
@@ -47,6 +107,8 @@ export interface PlaybackEntity {
   kind: "BALL" | "ENEMY" | "ARENA" | "OBSTACLE";
   spawnX: number;
   spawnY: number;
+  presentation?: PlaybackPresentation;
+  collision?: CollisionShape;
 }
 
 /** Straight-line movement segment for the ball through normalized arena coordinates. */
