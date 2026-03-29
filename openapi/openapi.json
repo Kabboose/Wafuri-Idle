@@ -1357,7 +1357,8 @@
             "enum": [
               "BALL_ENEMY",
               "BALL_WALL",
-              "BALL_OBSTACLE"
+              "BALL_OBSTACLE",
+              "BALL_FLIPPER"
             ]
           },
           "x": {

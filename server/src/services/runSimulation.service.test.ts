@@ -113,7 +113,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     zones: [],
     playfieldBoundary: result.playback.arena.playfieldBoundary
   });
-  assert.equal(result.playback.entities.length, 8);
+  assert.equal(result.playback.entities.length, 10);
   assert.deepEqual(result.playback.entities[0], {
     id: "ball-1",
     kind: "BALL",
@@ -133,10 +133,12 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   });
   const enemyEntities = result.playback.entities.filter((entity) => entity.kind === "ENEMY");
   const obstacleEntities = result.playback.entities.filter((entity) => entity.kind === "OBSTACLE");
+  const flipperEntities = result.playback.entities.filter((entity) => entity.kind === "ARENA");
   const boundarySegments = result.playback.arena.playfieldBoundary.segments;
   const boundaryPoints = result.playback.arena.playfieldBoundary.points;
   assert.equal(enemyEntities.length, 4);
   assert.equal(obstacleEntities.length, 3);
+  assert.equal(flipperEntities.length, 2);
   assert.equal(boundarySegments.length, 4);
   assert.equal(boundaryPoints.length, 6);
   assert.ok(enemyEntities.every((entity) => entity.spawnX >= 0 && entity.spawnX <= 1));
@@ -148,6 +150,8 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.ok(enemyEntities.every((entity) => entity.collision?.type !== "CIRCLE" || entity.collision.radius === GAME_CONFIG.run.playbackEnemyCollisionRadius));
   assert.ok(obstacleEntities.every((entity) => entity.presentation?.assetId === "bumper-round-silver"));
   assert.ok(obstacleEntities.every((entity) => entity.collision?.type === "CIRCLE"));
+  assert.ok(flipperEntities.every((entity) => entity.presentation?.assetId === "flipper-left" || entity.presentation?.assetId === "flipper-right"));
+  assert.ok(flipperEntities.every((entity) => entity.collision?.type === "BOX"));
   assert.ok(
     boundarySegments.every(
       (segment) =>
@@ -242,6 +246,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   const collisionEvents = result.playback.events.filter((event) => event.kind === "COLLISION");
   const enemyCollisionEvents = collisionEvents.filter((event) => event.collisionKind === "BALL_ENEMY");
   const obstacleCollisionEvents = collisionEvents.filter((event) => event.collisionKind === "BALL_OBSTACLE");
+  const flipperCollisionEvents = collisionEvents.filter((event) => event.collisionKind === "BALL_FLIPPER");
   const wallCollisionEvents = collisionEvents.filter((event) => event.collisionKind === "BALL_WALL");
   const damageEvents = result.playback.events.filter((event) => event.kind === "DAMAGE");
   const triggerEvents = result.playback.events.filter((event) => event.kind === "TRIGGER");
@@ -249,6 +254,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.equal(enemyCollisionEvents.length, 10);
   assert.ok(obstacleCollisionEvents.length >= 1);
   assert.ok(wallCollisionEvents.length >= 1);
+  assert.ok(flipperCollisionEvents.length >= 1);
   assert.equal(damageEvents.length, 10);
   assert.equal(triggerEvents.length, 13);
   assert.ok(
@@ -268,9 +274,11 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.ok(collisionEvents.some((event) => event.collisionKind === "BALL_WALL"));
   assert.ok(collisionEvents.some((event) => event.collisionKind === "BALL_ENEMY"));
   assert.ok(collisionEvents.some((event) => event.collisionKind === "BALL_OBSTACLE"));
+  assert.ok(collisionEvents.some((event) => event.collisionKind === "BALL_FLIPPER"));
   assert.ok(triggerEvents.every((event) => event.timelineTimestampMs >= 0 && event.timelineTimestampMs <= 10_000));
   assert.ok(new Set(enemyCollisionEvents.map((event) => event.targetEntityId)).size > 1);
   assert.ok(new Set(obstacleCollisionEvents.map((event) => event.targetEntityId)).size >= 1);
+  assert.ok(new Set(flipperCollisionEvents.map((event) => event.targetEntityId)).size >= 1);
   assert.ok(new Set(damageEvents.map((event) => event.targetEntityId)).size > 1);
   assert.ok(new Set(wallCollisionEvents.map((event) => event.targetEntityId)).size >= 1);
   assert.ok(
@@ -316,6 +324,9 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   );
   assert.ok(
     obstacleCollisionEvents.every((event) => obstacleEntities.some((entity) => entity.id === event.targetEntityId))
+  );
+  assert.ok(
+    flipperCollisionEvents.every((event) => flipperEntities.some((entity) => entity.id === event.targetEntityId))
   );
   assert.ok(
     enemyCollisionEvents.every((event) => {
@@ -427,6 +438,30 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     const collisionEventIndex = result.playback.events.findIndex((event) => event === obstacleCollisionEvents[index]);
     assert.notEqual(collisionEventIndex, -1);
     assert.notEqual(result.playback.events[collisionEventIndex + 1]?.kind, "DAMAGE");
+  }
+
+  for (let index = 0; index < flipperCollisionEvents.length; index += 1) {
+    const collisionEventIndex = result.playback.events.findIndex((event) => event === flipperCollisionEvents[index]);
+    assert.notEqual(collisionEventIndex, -1);
+    const nextEvent = result.playback.events
+      .slice(collisionEventIndex + 1)
+      .find((event) => event.kind === "BALL_PATH");
+
+    assert.equal(nextEvent?.kind, "BALL_PATH");
+
+    if (nextEvent?.kind === "BALL_PATH") {
+      const relaunchDirection = getPathDirection(nextEvent);
+
+      assert.ok(relaunchDirection.y < 0);
+      assert.ok(relaunchDirection.y <= -0.88);
+      assert.ok(Math.abs(relaunchDirection.x) >= 0.22);
+      assert.ok(Math.abs(relaunchDirection.x) <= 0.42);
+      assert.ok(
+        flipperCollisionEvents[index]?.targetEntityId === "flipper-left"
+          ? relaunchDirection.x > 0
+          : relaunchDirection.x < 0
+      );
+    }
   }
 
   const entityIds = new Set(result.playback.entities.map((entity) => entity.id));

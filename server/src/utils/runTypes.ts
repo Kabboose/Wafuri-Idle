@@ -129,7 +129,7 @@ export interface CollisionEvent {
   timelineTimestampMs: number;
   sourceEntityId: string;
   targetEntityId: string;
-  collisionKind: "BALL_ENEMY" | "BALL_WALL" | "BALL_OBSTACLE";
+  collisionKind: "BALL_ENEMY" | "BALL_WALL" | "BALL_OBSTACLE" | "BALL_FLIPPER";
   x: number;
   y: number;
 }

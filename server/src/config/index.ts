@@ -39,6 +39,13 @@ export const GAME_CONFIG = {
     obstaclePlacementPadding: 0.015,
     mixedPlacementPadding: 0.015,
     maxPlacementRetries: 24,
+    playbackFlipperWidth: 0.305,
+    playbackFlipperHeight: 0.042,
+    playbackFlipperTopY: 0.89,
+    playbackFlipperInsetX: 0.15,
+    playbackFlipperRelaunchSpeedMultiplier: 1.65,
+    playbackFlipperInnerHorizontalDirection: 0.34,
+    playbackFlipperOuterHorizontalDirection: 0.56,
     playbackWallInset: 0.04,
     playbackWallReboundMinNormalComponent: 0.35,
     playbackWallReboundMaxNormalComponent: 0.9

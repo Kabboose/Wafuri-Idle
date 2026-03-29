@@ -228,6 +228,16 @@ export function RunReplay({
             </div>
 
             {runResult.playback.entities
+              .filter((entity) => entity.kind === "ARENA")
+              .map((entity) => (
+                <div
+                  key={entity.id}
+                  className="replay-entity replay-flipper"
+                  style={getEntityPresentationStyle(entity)}
+                />
+              ))}
+
+            {runResult.playback.entities
               .filter((entity) => entity.kind === "OBSTACLE")
               .map((entity) => (
                 <div

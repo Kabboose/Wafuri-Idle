@@ -144,7 +144,7 @@ npm run dev --workspace server
 npm run dev --workspace client
 ```
 
-8. Open `http://localhost:5173`
+8. Open `http://localhost:5174`
 
 The frontend proxies REST calls to the backend on `http://localhost:3001`.
 

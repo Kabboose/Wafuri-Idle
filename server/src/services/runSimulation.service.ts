@@ -18,6 +18,13 @@ const BASE_CRIT_CHANCE_SCALE = GAME_CONFIG.run.baseCritChanceScale;
 const PLAYBACK_COMBO_MILESTONE_THRESHOLDS = new Set<number>(GAME_CONFIG.run.playbackComboMilestoneThresholds);
 const PLAYBACK_ENEMY_COLLISION_RADIUS = GAME_CONFIG.run.playbackEnemyCollisionRadius;
 const PLAYBACK_FINISHER_LEAD_MS = GAME_CONFIG.run.playbackFinisherLeadMs;
+const PLAYBACK_FLIPPER_HEIGHT = GAME_CONFIG.run.playbackFlipperHeight;
+const PLAYBACK_FLIPPER_INSET_X = GAME_CONFIG.run.playbackFlipperInsetX;
+const PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION = GAME_CONFIG.run.playbackFlipperInnerHorizontalDirection;
+const PLAYBACK_FLIPPER_OUTER_HORIZONTAL_DIRECTION = GAME_CONFIG.run.playbackFlipperOuterHorizontalDirection;
+const PLAYBACK_FLIPPER_RELAUNCH_SPEED_MULTIPLIER = GAME_CONFIG.run.playbackFlipperRelaunchSpeedMultiplier;
+const PLAYBACK_FLIPPER_TOP_Y = GAME_CONFIG.run.playbackFlipperTopY;
+const PLAYBACK_FLIPPER_WIDTH = GAME_CONFIG.run.playbackFlipperWidth;
 const PLAYFIELD_BOTTOM_EXCLUSION_START_Y = GAME_CONFIG.run.playfieldBottomExclusionStartY;
 const ENEMY_PLACEMENT_PADDING = GAME_CONFIG.run.enemyPlacementPadding;
 const MAX_PLACEMENT_RETRIES = GAME_CONFIG.run.maxPlacementRetries;
@@ -40,6 +47,7 @@ type SimulatedHit = {
 type EnemyTarget = PlaybackEntity & { kind: "ENEMY" };
 type ObstacleTarget = PlaybackEntity & { kind: "OBSTACLE" };
 type CircularTarget = EnemyTarget | ObstacleTarget;
+type FlipperTarget = PlaybackEntity & { kind: "ARENA"; collision: { type: "BOX"; width: number; height: number } };
 type CircularPlacementEntity = PlaybackEntity & { collision: { type: "CIRCLE"; radius: number } };
 type PlacementSpec = {
   id: string;
@@ -66,11 +74,18 @@ type ObstacleCollision = Point & {
   normal: Point;
   distance: number;
 };
+type FlipperCollision = Point & {
+  flipper: FlipperTarget;
+  distance: number;
+  direction: Point;
+  speedMultiplier: number;
+};
 type MotionStep = {
   from: Point;
   to: Point;
-  collision: WallCollision | EnemyCollision | ObstacleCollision;
+  collision: WallCollision | EnemyCollision | ObstacleCollision | FlipperCollision;
   hit?: SimulatedHit;
+  speedMultiplier: number;
 };
 
 /** Hashes the provided seed string into a deterministic 32-bit unsigned integer. */
@@ -128,6 +143,17 @@ function createCircleCollision(radius: number) {
     offsetX: 0,
     offsetY: 0,
     radius
+  };
+}
+
+/** Creates a local box collision shape anchored at the entity origin. */
+function createBoxCollision(width: number, height: number) {
+  return {
+    type: "BOX" as const,
+    offsetX: 0,
+    offsetY: 0,
+    width,
+    height
   };
 }
 
@@ -318,6 +344,24 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
   const playfieldBoundary = createPlayfieldBoundary();
   const nextRandom = createSeededRng(`${seed}:playback-layout`);
   const placedCircularEntities: CircularPlacementEntity[] = [];
+  const flippers: PlaybackEntity[] = [
+    {
+      id: "flipper-left",
+      kind: "ARENA",
+      spawnX: PLAYBACK_FLIPPER_INSET_X + PLAYBACK_FLIPPER_WIDTH / 2,
+      spawnY: PLAYBACK_FLIPPER_TOP_Y + PLAYBACK_FLIPPER_HEIGHT / 2,
+      presentation: createPresentation("flipper-left", 11, 1),
+      collision: createBoxCollision(PLAYBACK_FLIPPER_WIDTH, PLAYBACK_FLIPPER_HEIGHT)
+    },
+    {
+      id: "flipper-right",
+      kind: "ARENA",
+      spawnX: 1 - PLAYBACK_FLIPPER_INSET_X - PLAYBACK_FLIPPER_WIDTH / 2,
+      spawnY: PLAYBACK_FLIPPER_TOP_Y + PLAYBACK_FLIPPER_HEIGHT / 2,
+      presentation: createPresentation("flipper-right", -11, 1),
+      collision: createBoxCollision(PLAYBACK_FLIPPER_WIDTH, PLAYBACK_FLIPPER_HEIGHT)
+    }
+  ];
   const obstacleSpecs: PlacementSpec[] = [
     {
       id: "obstacle-1",
@@ -407,6 +451,7 @@ function createPlaybackEntities(seed: string): PlaybackEntity[] {
       presentation: createPresentation("ball-default", 0, 1),
       collision: createCircleCollision(0.02)
     },
+    ...flippers,
     ...obstacles,
     ...enemies
   ];
@@ -735,6 +780,85 @@ function getCircularCollision(
   }, null);
 }
 
+/** Computes the first collision against a deterministic flipper region at the bottom of the board. */
+function getFlipperCollision(
+  start: Point,
+  direction: Point,
+  flippers: FlipperTarget[]
+): FlipperCollision | null {
+  if (direction.y <= Number.EPSILON) {
+    return null;
+  }
+
+  const collisions: FlipperCollision[] = [];
+
+  for (const flipper of flippers) {
+    const halfWidth = flipper.collision.width / 2;
+    const halfHeight = flipper.collision.height / 2;
+    const minX = flipper.spawnX - halfWidth;
+    const maxX = flipper.spawnX + halfWidth;
+    const minY = flipper.spawnY - halfHeight;
+    const maxY = flipper.spawnY + halfHeight;
+    const inverseDirectionX = Math.abs(direction.x) <= Number.EPSILON ? Number.POSITIVE_INFINITY : 1 / direction.x;
+    const inverseDirectionY = Math.abs(direction.y) <= Number.EPSILON ? Number.POSITIVE_INFINITY : 1 / direction.y;
+    const minDistanceX = (minX - start.x) * inverseDirectionX;
+    const maxDistanceX = (maxX - start.x) * inverseDirectionX;
+    const minDistanceY = (minY - start.y) * inverseDirectionY;
+    const maxDistanceY = (maxY - start.y) * inverseDirectionY;
+    const distanceEntry = Math.max(
+      Math.min(minDistanceX, maxDistanceX),
+      Math.min(minDistanceY, maxDistanceY)
+    );
+    const distanceExit = Math.min(
+      Math.max(minDistanceX, maxDistanceX),
+      Math.max(minDistanceY, maxDistanceY)
+    );
+
+    if (distanceEntry <= Number.EPSILON || distanceEntry > distanceExit || distanceExit <= Number.EPSILON) {
+      continue;
+    }
+
+    const contactPoint = {
+      x: clampNormalized(start.x + direction.x * distanceEntry),
+      y: clampNormalized(start.y + direction.y * distanceEntry)
+    };
+    const contactRatio = Math.min(
+      Math.max((contactPoint.x - minX) / Math.max(maxX - minX, Number.EPSILON), 0),
+      1
+    );
+    const outerContactBias = flipper.id === "flipper-left" ? 1 - contactRatio : contactRatio;
+    const horizontalDirection = PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION +
+      (PLAYBACK_FLIPPER_OUTER_HORIZONTAL_DIRECTION - PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION) * outerContactBias;
+    const relaunchDirection = flipper.id === "flipper-left"
+      ? normalizeVector(horizontalDirection, -1.28, { x: 0.42, y: -1.28 })
+      : normalizeVector(horizontalDirection * -1, -1.28, { x: -0.42, y: -1.28 });
+
+    collisions.push({
+      flipper,
+      x: contactPoint.x,
+      y: contactPoint.y,
+      distance: distanceEntry,
+      direction: relaunchDirection,
+      speedMultiplier: PLAYBACK_FLIPPER_RELAUNCH_SPEED_MULTIPLIER
+    });
+  }
+
+  return collisions.reduce<FlipperCollision | null>((closest, candidate) => {
+    if (
+      !closest ||
+      candidate.distance < closest.distance - Number.EPSILON ||
+      (
+        Math.abs(candidate.distance - closest.distance) <= Number.EPSILON &&
+        candidate.flipper.id.localeCompare(closest.flipper.id) < 0
+      )
+    ) {
+      return candidate;
+    }
+
+    return closest;
+  }, null);
+}
+
 /** Returns the primary timeline timestamp used to order mixed playback event types. */
 function getPlaybackEventTime(event: PlaybackEvent): number {
   if (event.kind === "BALL_PATH") {
@@ -868,6 +992,9 @@ function createMotionTimeline(
   const ballEntity = entities.find((entity) => entity.kind === "BALL");
   const enemyEntities = entities.filter((entity): entity is EnemyTarget => entity.kind === "ENEMY");
   const obstacleEntities = entities.filter((entity): entity is ObstacleTarget => entity.kind === "OBSTACLE");
+  const flipperEntities = entities.filter(
+    (entity): entity is FlipperTarget => entity.kind === "ARENA" && entity.collision?.type === "BOX"
+  );
 
   if (!ballEntity || enemyEntities.length === 0 || durationMs <= 0 || hits.length === 0) {
     return [];
@@ -886,9 +1013,11 @@ function createMotionTimeline(
     -1,
     { x: 0.42, y: -1 }
   );
-  const maxSteps = hits.length * 16;
+  let currentSpeedMultiplier = 1;
+  const maxSteps = hits.length * 24;
 
   for (let hitIndex = 0; hitIndex < hits.length && steps.length < maxSteps; ) {
+    const flipperCollision = getFlipperCollision(currentPoint, currentDirection, flipperEntities);
     const boundaryCollision = getWallCollision(
       currentPoint,
       currentDirection,
@@ -900,9 +1029,27 @@ function createMotionTimeline(
       [...enemyEntities, ...obstacleEntities],
       enemySequenceOrder
     );
-    const firstCollision = circularCollision && circularCollision.distance < boundaryCollision.distance
-      ? circularCollision
-      : boundaryCollision;
+    const firstCollision = [flipperCollision, circularCollision, boundaryCollision]
+      .filter((collision): collision is FlipperCollision | EnemyCollision | ObstacleCollision | WallCollision => collision !== null)
+      .reduce<FlipperCollision | EnemyCollision | ObstacleCollision | WallCollision | null>((closest, candidate) => {
+        if (
+          !closest ||
+          candidate.distance < closest.distance - Number.EPSILON ||
+          (
+            Math.abs(candidate.distance - closest.distance) <= Number.EPSILON &&
+            "flipper" in candidate &&
+            !("flipper" in closest)
+          )
+        ) {
+          return candidate;
+        }
+
+        return closest;
+      }, null);
+
+    if (!firstCollision) {
+      throw new Error("Unable to resolve playback motion collision");
+    }
 
     steps.push({
       from: currentPoint,
@@ -911,17 +1058,24 @@ function createMotionTimeline(
         y: firstCollision.y
       },
       collision: firstCollision,
-      hit: "enemy" in firstCollision ? hits[hitIndex] : undefined
+      hit: "enemy" in firstCollision ? hits[hitIndex] : undefined,
+      speedMultiplier: currentSpeedMultiplier
     });
 
     currentPoint = {
       x: firstCollision.x,
       y: firstCollision.y
     };
-    const reflectedDirection = reflectDirection(currentDirection, firstCollision.normal);
-    currentDirection = "targetEntityId" in firstCollision
-      ? tuneWallReboundDirection(reflectedDirection, firstCollision.normal)
-      : reflectedDirection;
+    if ("flipper" in firstCollision) {
+      currentDirection = firstCollision.direction;
+      currentSpeedMultiplier = firstCollision.speedMultiplier;
+    } else {
+      const reflectedDirection = reflectDirection(currentDirection, firstCollision.normal);
+      currentDirection = "targetEntityId" in firstCollision
+        ? tuneWallReboundDirection(reflectedDirection, firstCollision.normal)
+        : reflectedDirection;
+      currentSpeedMultiplier = 1;
+    }
 
     if ("enemy" in firstCollision) {
       hitIndex += 1;
@@ -936,13 +1090,25 @@ function createMotionTimeline(
     return [];
   }
 
-  const segmentDurationMs = Math.max(Math.floor(durationMs / steps.length), 1);
+  const stepTravelWeights = steps.map((step) => (
+    getVectorLength(step.to.x - step.from.x, step.to.y - step.from.y) / Math.max(step.speedMultiplier, Number.EPSILON)
+  ));
+  const totalTravelWeight = stepTravelWeights.reduce((totalWeight, stepWeight) => totalWeight + stepWeight, 0) || 1;
   const events: PlaybackEvent[] = [];
+  let elapsedTravelWeight = 0;
+  let previousSegmentEnd = 0;
 
   for (let stepIndex = 0; stepIndex < steps.length; stepIndex += 1) {
     const step = steps[stepIndex];
-    const segmentStart = stepIndex * segmentDurationMs;
-    const segmentEnd = stepIndex === steps.length - 1 ? durationMs : Math.min(segmentStart + segmentDurationMs, durationMs);
+    const segmentStart = previousSegmentEnd;
+    elapsedTravelWeight += stepTravelWeights[stepIndex] ?? 0;
+    const remainingSegments = steps.length - stepIndex - 1;
+    const maxSegmentEnd = durationMs - remainingSegments;
+    const proportionalSegmentEnd = stepIndex === steps.length - 1
+      ? durationMs
+      : Math.round((elapsedTravelWeight / totalTravelWeight) * durationMs);
+    const segmentEnd = Math.min(Math.max(proportionalSegmentEnd, segmentStart + 1), maxSegmentEnd);
+    previousSegmentEnd = segmentEnd;
 
     events.push({
       kind: "BALL_PATH",
@@ -1004,8 +1170,16 @@ function createMotionTimeline(
         kind: "COLLISION",
         timelineTimestampMs: segmentEnd,
         sourceEntityId: ballEntity.id,
-        targetEntityId: "obstacle" in step.collision ? step.collision.obstacle.id : step.collision.targetEntityId,
-        collisionKind: "obstacle" in step.collision ? "BALL_OBSTACLE" : "BALL_WALL",
+        targetEntityId: "flipper" in step.collision
+          ? step.collision.flipper.id
+          : "obstacle" in step.collision
+            ? step.collision.obstacle.id
+            : step.collision.targetEntityId,
+        collisionKind: "flipper" in step.collision
+          ? "BALL_FLIPPER"
+          : "obstacle" in step.collision
+            ? "BALL_OBSTACLE"
+            : "BALL_WALL",
         x: step.to.x,
         y: step.to.y
       });
