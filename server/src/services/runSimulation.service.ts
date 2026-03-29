@@ -542,6 +542,53 @@ function reflectDirection(direction: Point, normal: Point): Point {
   );
 }
 
+/** Returns true when two points are effectively the same for deterministic playback geometry. */
+function arePointsEqual(left: Point, right: Point): boolean {
+  return Math.abs(left.x - right.x) <= 0.000001 && Math.abs(left.y - right.y) <= 0.000001;
+}
+
+/** Returns the unit normal for a boundary segment. */
+function getBoundarySegmentNormal(segment: ArenaBoundarySegment): Point {
+  const deltaX = segment.toX - segment.fromX;
+  const deltaY = segment.toY - segment.fromY;
+
+  return normalizeVector(-deltaY, deltaX, { x: 0, y: -1 });
+}
+
+/** Smooths seam contacts by blending neighboring rail normals at shared vertices. */
+function getBoundaryCollisionNormal(
+  contactPoint: Point,
+  segment: ArenaBoundarySegment,
+  boundarySegments: ArenaBoundarySegment[]
+): Point {
+  const segmentNormal = getBoundarySegmentNormal(segment);
+  const neighbors = boundarySegments.filter((candidateSegment) => {
+    if (candidateSegment.id === segment.id) {
+      return false;
+    }
+
+    const candidateStart = { x: candidateSegment.fromX, y: candidateSegment.fromY };
+    const candidateEnd = { x: candidateSegment.toX, y: candidateSegment.toY };
+
+    return arePointsEqual(candidateStart, contactPoint) || arePointsEqual(candidateEnd, contactPoint);
+  });
+
+  if (neighbors.length === 0) {
+    return segmentNormal;
+  }
+
+  const averagedNormal = neighbors.reduce((total, neighbor) => {
+    const neighborNormal = getBoundarySegmentNormal(neighbor);
+
+    return {
+      x: total.x + neighborNormal.x,
+      y: total.y + neighborNormal.y
+    };
+  }, segmentNormal);
+
+  return normalizeVector(averagedNormal.x, averagedNormal.y, segmentNormal);
+}
+
 /** Returns the active flipper tangent direction from pivot/base toward the tip. */
 function getActiveFlipperAxis(flipper: FlipperTarget): Point {
   const angleRadians = degreesToRadians(PLAYBACK_FLIPPER_ACTIVE_ANGLE_DEGREES);
@@ -665,7 +712,7 @@ function getPlayfieldBoundaryCollision(
       x: clampNormalized(start.x + direction.x * distance),
       y: clampNormalized(start.y + direction.y * distance)
     };
-    const normal = normalizeVector(-segmentVector.y, segmentVector.x, { x: 0, y: -1 });
+    const normal = getBoundaryCollisionNormal(contactPoint, segment, boundarySegments);
 
     collisions.push({
       x: contactPoint.x,

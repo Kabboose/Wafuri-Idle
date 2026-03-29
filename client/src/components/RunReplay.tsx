@@ -146,8 +146,8 @@ export function RunReplay({
     () => getPlayfieldClipPath(runResult.playback),
     [runResult.playback]
   );
-  const activeFlipperId = frame.activeCollision?.collisionKind === "BALL_FLIPPER"
-    ? frame.activeCollision.targetEntityId
+  const activeFlipperId = frame.activeFlipperCollision
+    ? frame.activeFlipperCollision.targetEntityId
     : null;
   return (
     <section className="run-replay-card">

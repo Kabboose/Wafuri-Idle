@@ -36,12 +36,14 @@ export type PlaybackFrame = {
   worldCues: WorldCue[];
   uiCues: UiCue[];
   activeCollision: PlaybackCollisionEvent | null;
+  activeFlipperCollision: PlaybackCollisionEvent | null;
   activeDamage: PlaybackDamageEvent | null;
   activeComboMilestone: UiCue | null;
   finishCueActive: boolean;
 };
 
-const COLLISION_CUE_LIFETIME_MS = 180;
+const COLLISION_CUE_LIFETIME_MS = 160;
+const FLIPPER_ACTIVE_LIFETIME_MS = 120;
 const DAMAGE_CUE_LIFETIME_MS = 480;
 const WORLD_TRIGGER_CUE_LIFETIME_MS = 320;
 const UI_CUE_LIFETIME_MS = 700;
@@ -207,6 +209,12 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
     (event): event is PlaybackCollisionEvent =>
       event.kind === "COLLISION" && isCueActive(event.timelineTimestampMs, clampedTimelineMs, COLLISION_CUE_LIFETIME_MS)
   );
+  const activeFlipperCollisionEvents = playback.events.filter(
+    (event): event is PlaybackCollisionEvent =>
+      event.kind === "COLLISION" &&
+      event.collisionKind === "BALL_FLIPPER" &&
+      isCueActive(event.timelineTimestampMs, clampedTimelineMs, FLIPPER_ACTIVE_LIFETIME_MS)
+  );
   const activeDamageEvents = playback.events.filter(
     (event): event is PlaybackDamageEvent =>
       event.kind === "DAMAGE" && isCueActive(event.timelineTimestampMs, clampedTimelineMs, DAMAGE_CUE_LIFETIME_MS)
@@ -231,6 +239,9 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
     .filter((cue): cue is UiCue => Boolean(cue));
   const lastDamageEvent = damageEvents.length > 0 ? damageEvents[damageEvents.length - 1] : undefined;
   const activeCollision = activeCollisionEvents.length > 0 ? activeCollisionEvents[activeCollisionEvents.length - 1] : null;
+  const activeFlipperCollision = activeFlipperCollisionEvents.length > 0
+    ? activeFlipperCollisionEvents[activeFlipperCollisionEvents.length - 1]
+    : null;
   const activeDamage = activeDamageEvents.length > 0 ? activeDamageEvents[activeDamageEvents.length - 1] : null;
   const activeComboMilestone = uiCues.find((cue) => cue.kind === "COMBO_MILESTONE") ?? null;
   const finishCueActive = uiCues.some((cue) => cue.kind === "RUN_FINISHER");
@@ -244,6 +255,7 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
     worldCues,
     uiCues,
     activeCollision,
+    activeFlipperCollision,
     activeDamage,
     activeComboMilestone,
     finishCueActive

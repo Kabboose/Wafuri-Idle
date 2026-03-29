@@ -4,6 +4,8 @@ Current prototype for a World Flipper-inspired browser idle game built with Type
 
 Wafuri-Idle is being built as a server-authoritative idle game foundation with deterministic simulation, concurrency-safe progression, and a backend that can grow into async multiplayer systems over time.
 
+![Pinball demo](docs/Pinball-demo.gif)
+
 ## Current Features
 
 - Player state persists in PostgreSQL instead of process memory
