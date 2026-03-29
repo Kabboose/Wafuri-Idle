@@ -16,6 +16,8 @@ const BASE_CRIT_CHANCE_SCALE = GAME_CONFIG.run.baseCritChanceScale;
 const PLAYBACK_COMBO_MILESTONE_THRESHOLDS = new Set<number>(GAME_CONFIG.run.playbackComboMilestoneThresholds);
 const PLAYBACK_ENEMY_COLLISION_RADIUS = GAME_CONFIG.run.playbackEnemyCollisionRadius;
 const PLAYBACK_FINISHER_LEAD_MS = GAME_CONFIG.run.playbackFinisherLeadMs;
+const PLAYBACK_WALL_REBOUND_MAX_NORMAL_COMPONENT = GAME_CONFIG.run.playbackWallReboundMaxNormalComponent;
+const PLAYBACK_WALL_REBOUND_MIN_NORMAL_COMPONENT = GAME_CONFIG.run.playbackWallReboundMinNormalComponent;
 const PLAYBACK_WALL_INSET = GAME_CONFIG.run.playbackWallInset;
 const SPEED_SCALE = GAME_CONFIG.run.speedScale;
 
@@ -182,6 +184,44 @@ function reflectDirection(direction: Point, normal: Point): Point {
     direction.y - 2 * dot * normal.y,
     { x: direction.x * -1, y: direction.y * -1 }
   );
+}
+
+/** Clamps a wall rebound so the exit angle stays readable and pinball-like. */
+function tuneWallReboundDirection(reflectedDirection: Point, wallNormal: Point): Point {
+  const minNormalComponent = Math.min(
+    Math.max(PLAYBACK_WALL_REBOUND_MIN_NORMAL_COMPONENT, Number.EPSILON),
+    1
+  );
+  const maxNormalComponent = Math.min(
+    Math.max(PLAYBACK_WALL_REBOUND_MAX_NORMAL_COMPONENT, minNormalComponent),
+    1
+  );
+
+  if (Math.abs(wallNormal.x) > Number.EPSILON) {
+    const clampedNormalComponent = Math.min(
+      Math.max(Math.abs(reflectedDirection.x), minNormalComponent),
+      maxNormalComponent
+    );
+    const tangentMagnitude = Math.sqrt(Math.max(1 - clampedNormalComponent * clampedNormalComponent, 0));
+    const tangentSign = reflectedDirection.y < 0 ? -1 : 1;
+
+    return {
+      x: wallNormal.x * clampedNormalComponent,
+      y: tangentSign * tangentMagnitude
+    };
+  }
+
+  const clampedNormalComponent = Math.min(
+    Math.max(Math.abs(reflectedDirection.y), minNormalComponent),
+    maxNormalComponent
+  );
+  const tangentMagnitude = Math.sqrt(Math.max(1 - clampedNormalComponent * clampedNormalComponent, 0));
+  const tangentSign = reflectedDirection.x < 0 ? -1 : 1;
+
+  return {
+    x: tangentSign * tangentMagnitude,
+    y: wallNormal.y * clampedNormalComponent
+  };
 }
 
 /** Produces a deterministic enemy order so hits cycle through the board in a replay-friendly way. */
@@ -497,7 +537,10 @@ function createMotionTimeline(seed: string, entities: PlaybackEntity[], duration
       x: firstCollision.x,
       y: firstCollision.y
     };
-    currentDirection = reflectDirection(currentDirection, firstCollision.normal);
+    const reflectedDirection = reflectDirection(currentDirection, firstCollision.normal);
+    currentDirection = "targetEntityId" in firstCollision
+      ? tuneWallReboundDirection(reflectedDirection, firstCollision.normal)
+      : reflectedDirection;
 
     if ("enemy" in firstCollision) {
       hitIndex += 1;

@@ -34,7 +34,8 @@ export const GAME_CONFIG = {
     playbackFinisherLeadMs: 250,
     playbackEnemyCollisionRadius: 0.055,
     playbackWallInset: 0.04,
-    playbackPostImpactTravelDistance: 0.22
+    playbackWallReboundMinNormalComponent: 0.35,
+    playbackWallReboundMaxNormalComponent: 0.9
   },
   rewards: {
     currencyPerDamage: "1",

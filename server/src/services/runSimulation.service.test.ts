@@ -31,6 +31,17 @@ function isWallBoundaryCoordinate(value: number): boolean {
   );
 }
 
+function getPathDirection(event: Extract<PlaybackEvent, { kind: "BALL_PATH" }>) {
+  const deltaX = event.toX - event.fromX;
+  const deltaY = event.toY - event.fromY;
+  const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+  return {
+    x: deltaX / length,
+    y: deltaY / length
+  };
+}
+
 test("simulateRun is deterministic for the same input and seed", () => {
   const input = createRunInput();
 
@@ -220,6 +231,20 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
       nextEvent?.kind === "BALL_PATH" ? nextEvent.fromY : undefined,
       wallCollisionEvents[index]?.y
     );
+
+    if (nextEvent?.kind === "BALL_PATH") {
+      const reboundDirection = getPathDirection(nextEvent);
+      const normalComponent = wallCollisionEvents[index]?.targetEntityId === "wall-left" || wallCollisionEvents[index]?.targetEntityId === "wall-right"
+        ? Math.abs(reboundDirection.x)
+        : Math.abs(reboundDirection.y);
+
+      assert.ok(
+        normalComponent >= GAME_CONFIG.run.playbackWallReboundMinNormalComponent - 0.000001
+      );
+      assert.ok(
+        normalComponent <= GAME_CONFIG.run.playbackWallReboundMaxNormalComponent + 0.000001
+      );
+    }
   }
 
   const entityIds = new Set(result.playback.entities.map((entity) => entity.id));

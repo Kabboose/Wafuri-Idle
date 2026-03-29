@@ -23,7 +23,17 @@ Wafuri-Idle is being built as a server-authoritative idle game foundation with d
   - collisions
   - damage events
   - sparse trigger events
-- The frontend now renders a replay view from the server playback timeline
+- Run playback is now trajectory-driven and pinball-inspired:
+  - normalized playfield walls
+  - multiple deterministic enemy targets
+  - contact-point enemy collisions
+  - wall rebounds
+  - heading-driven motion between collisions
+- The frontend now renders a replay view from the server playback timeline with:
+  - arena-first presentation
+  - combo-focused live HUD
+  - rolling total damage
+  - collision / damage / finisher timing emphasis
 - Guest accounts can be created explicitly from the entry screen
 - Registered accounts can log in with username/password
 - Guest accounts can be upgraded in place via the in-game `Save Progress` flow
@@ -161,6 +171,7 @@ Current scope:
 - current run playback contract
 - generated client-safe types
 - generated typed client request wrappers and path constants
+- drift checks in normal local test workflows
 
 Useful commands:
 

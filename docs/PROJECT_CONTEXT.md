@@ -148,6 +148,14 @@ Playback currently supports:
 - damage events
 - sparse trigger events
 
+Playback feel and structure currently implemented:
+- trajectory-driven motion between collisions
+- deterministic wall rebounds
+- enemy collision contact points on collision boundaries instead of enemy centers
+- reflection-based post-impact redirection
+- no client-side path inference
+- no target-homing between collisions
+
 Current playback trigger kinds:
 - IMPACT_BURST
 - COMBO_MILESTONE
@@ -166,11 +174,19 @@ Frontend replay currently maps the server playback timeline into:
 - sparse UI trigger banners
 - end-of-run summary reveal
 
+Frontend replay presentation now also includes:
+- arena-first layout
+- combo as the primary live HUD signal
+- secondary rolling damage HUD
+- tighter collision / damage / finisher timing emphasis
+- finish-beat pacing before summary reveal
+
 This system is still considered **foundational scaffolding**, but the current live loop is no longer target direction only:
 - idle energy accumulation
 - deterministic run trigger
 - server-calculated rewards
 - playback-driven frontend replay
+- trajectory-driven rebound playback with deterministic collision timing
 
 ---
 
@@ -285,11 +301,12 @@ Current status:
 - `/run` orchestration exists
 - playback timeline exists
 - frontend replay mapping exists
+- OpenAPI contract generation + generated client wrappers exist
 
 Next likely expansion areas:
 - replace temporary client-provided combat input with server-authoritative team state
 - extend natural trigger emission as more gameplay systems appear
-- improve replay presentation without moving simulation logic client-side
+- deepen replay presentation without moving simulation logic client-side
 - build richer team/synergy systems on top of the current deterministic run contract
 
 ---
@@ -299,7 +316,7 @@ Next likely expansion areas:
 - real multiplayer
 - gacha system implementation
 - character collection depth
-- combat physics / pinball mechanics
+- full combat physics / flippers / gravity / paddle systems
 - advanced UI polish
 - social systems
 

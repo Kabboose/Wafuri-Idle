@@ -5,6 +5,7 @@ import { derivePlaybackFrame } from "../replay/playbackAdapter";
 
 const RESULTS_REVEAL_DELAY_MS = 650;
 const PATH_TRAIL_FADE_MS = 180;
+const PLAYBACK_SPEED_MULTIPLIER = 1.08;
 
 /** Formats fixed-point strings from the API into readable decimal values for display. */
 function formatFixed(value: string): string {
@@ -67,7 +68,8 @@ export function RunReplay({
     const startTime = performance.now();
 
     const step = (frameTime: number) => {
-      const nextTimelineMs = Math.min(Math.floor(frameTime - startTime), runResult.playback.durationMs);
+      const elapsedMs = (frameTime - startTime) * PLAYBACK_SPEED_MULTIPLIER;
+      const nextTimelineMs = Math.min(Math.floor(elapsedMs), runResult.playback.durationMs);
       setTimelineMs(nextTimelineMs);
 
       if (nextTimelineMs < runResult.playback.durationMs) {
@@ -113,11 +115,17 @@ export function RunReplay({
         <div className="run-replay-live-hud">
           <div className="run-replay-damage-hud">
             <span className="run-replay-hud-label">Total Damage</span>
-            <strong key={frame.rollingTotalDamage} className="run-replay-damage-value">
+            <strong
+              key={frame.rollingTotalDamage}
+              className={`run-replay-damage-value ${frame.activeDamage ? "is-pulsing" : ""}`}
+            >
               {frame.rollingTotalDamage}
             </strong>
           </div>
-          <div className="run-replay-combo-hud" key={frame.comboAfter}>
+          <div
+            className={`run-replay-combo-hud ${frame.activeComboMilestone ? "is-milestone" : ""}`}
+            key={frame.comboAfter}
+          >
             <span className="run-replay-hud-label">Combo</span>
             <strong className={`run-replay-combo-value ${frame.comboAfter > 0 ? "is-active" : ""}`}>
               {frame.comboAfter > 0 ? `x${frame.comboAfter}` : "Ready"}
@@ -131,7 +139,7 @@ export function RunReplay({
             {frame.uiCues.map((cue) => (
               <div
                 key={cue.id}
-                className={`run-replay-banner ${cue.emphasis === "strong" ? "is-strong" : ""}`}
+                className={`run-replay-banner ${cue.emphasis === "strong" ? "is-strong" : ""} ${cue.kind === "COMBO_MILESTONE" ? "is-combo" : ""} ${cue.kind === "RUN_FINISHER" ? "is-finisher" : ""}`}
               >
                 {cue.label}
               </div>
@@ -142,7 +150,7 @@ export function RunReplay({
           </div>
 
           {frame.phase === "FINISH" && !resultsVisible ? (
-            <div className="run-replay-finish-beat">Run Complete</div>
+            <div className={`run-replay-finish-beat ${frame.finishCueActive ? "is-emphasized" : ""}`}>Run Complete</div>
           ) : null}
 
           <div className="run-replay-path-layer" aria-hidden="true">
@@ -179,7 +187,7 @@ export function RunReplay({
 
             {frame.ballPosition ? (
               <div
-                className="replay-entity replay-ball"
+                className={`replay-entity replay-ball ${frame.activeCollision ? "is-impacting" : ""}`}
                 style={{
                   left: `${frame.ballPosition.x * 100}%`,
                   top: `${frame.ballPosition.y * 100}%`

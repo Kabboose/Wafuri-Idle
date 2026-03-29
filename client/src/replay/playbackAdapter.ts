@@ -35,11 +35,17 @@ export type PlaybackFrame = {
   comboAfter: number;
   worldCues: WorldCue[];
   uiCues: UiCue[];
+  activeCollision: PlaybackCollisionEvent | null;
+  activeDamage: PlaybackDamageEvent | null;
+  activeComboMilestone: UiCue | null;
+  finishCueActive: boolean;
   showSummary: boolean;
 };
 
-const WORLD_CUE_LIFETIME_MS = 425;
-const UI_CUE_LIFETIME_MS = 900;
+const COLLISION_CUE_LIFETIME_MS = 180;
+const DAMAGE_CUE_LIFETIME_MS = 480;
+const WORLD_TRIGGER_CUE_LIFETIME_MS = 320;
+const UI_CUE_LIFETIME_MS = 700;
 
 /** Clamps the playback cursor into the run's supported timeline. */
 function clampTimelineMs(playback: RunPlayback, timelineMs: number): number {
@@ -200,11 +206,11 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
   );
   const activeCollisionEvents = playback.events.filter(
     (event): event is PlaybackCollisionEvent =>
-      event.kind === "COLLISION" && isCueActive(event.timelineTimestampMs, clampedTimelineMs, WORLD_CUE_LIFETIME_MS)
+      event.kind === "COLLISION" && isCueActive(event.timelineTimestampMs, clampedTimelineMs, COLLISION_CUE_LIFETIME_MS)
   );
   const activeDamageEvents = playback.events.filter(
     (event): event is PlaybackDamageEvent =>
-      event.kind === "DAMAGE" && isCueActive(event.timelineTimestampMs, clampedTimelineMs, WORLD_CUE_LIFETIME_MS)
+      event.kind === "DAMAGE" && isCueActive(event.timelineTimestampMs, clampedTimelineMs, DAMAGE_CUE_LIFETIME_MS)
   );
   const activeTriggerEvents = playback.events.filter(
     (event): event is PlaybackTriggerEvent =>
@@ -212,7 +218,7 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
       isCueActive(
         event.timelineTimestampMs,
         clampedTimelineMs,
-        event.placement === "WORLD" ? WORLD_CUE_LIFETIME_MS : UI_CUE_LIFETIME_MS
+        event.placement === "WORLD" ? WORLD_TRIGGER_CUE_LIFETIME_MS : UI_CUE_LIFETIME_MS
       )
   );
 
@@ -225,6 +231,10 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
     .map((event) => mapTriggerCue(event).uiCue)
     .filter((cue): cue is UiCue => Boolean(cue));
   const lastDamageEvent = damageEvents.length > 0 ? damageEvents[damageEvents.length - 1] : undefined;
+  const activeCollision = activeCollisionEvents.length > 0 ? activeCollisionEvents[activeCollisionEvents.length - 1] : null;
+  const activeDamage = activeDamageEvents.length > 0 ? activeDamageEvents[activeDamageEvents.length - 1] : null;
+  const activeComboMilestone = uiCues.find((cue) => cue.kind === "COMBO_MILESTONE") ?? null;
+  const finishCueActive = uiCues.some((cue) => cue.kind === "RUN_FINISHER");
 
   return {
     phase: clampedTimelineMs >= playback.durationMs ? "FINISH" : clampedTimelineMs === 0 ? "RUN_START" : "RUNNING",
@@ -234,6 +244,10 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
     comboAfter: lastDamageEvent?.comboAfter ?? 0,
     worldCues,
     uiCues,
+    activeCollision,
+    activeDamage,
+    activeComboMilestone,
+    finishCueActive,
     showSummary: clampedTimelineMs >= playback.durationMs
   };
 }
