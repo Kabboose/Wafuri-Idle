@@ -108,6 +108,48 @@ Available recipes:
 - `client`: run the frontend dev server
 - `run`: do the full local startup flow, then run server and client together
 
+## Dependency Setup
+
+This repo is easiest to run with:
+
+- Node.js 24+
+- npm
+- Docker + Docker Compose
+- `just`
+
+### Linux
+
+Recommended installs:
+
+- `nvm`: https://github.com/nvm-sh/nvm
+- Node.js 24 via `nvm`
+- Docker Engine: https://docs.docker.com/engine/install/
+- Docker Compose plugin: https://docs.docker.com/compose/install/linux/
+- `just`: https://github.com/casey/just
+
+Typical flow after installing `nvm`:
+
+```bash
+nvm install 24
+nvm use 24
+```
+
+### Windows
+
+Recommended setup:
+
+- WSL2: https://learn.microsoft.com/windows/wsl/install
+- Docker Desktop: https://www.docker.com/products/docker-desktop/
+- Enable Docker Desktop WSL integration for your distro
+- Install Node via `nvm` inside WSL: https://github.com/nvm-sh/nvm
+- Install `just` inside WSL: https://github.com/casey/just
+
+This project is best run from inside your WSL2 Linux environment rather than native Windows tooling. In practice, that means:
+
+- clone the repo inside WSL2
+- run `nvm`, `npm`, `just`, and Prisma commands inside WSL2
+- use Docker Desktop to provide PostgreSQL and Redis to the WSL2 environment
+
 ## Run
 
 This repo requires Node.js 24+ and npm.
