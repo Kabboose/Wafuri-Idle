@@ -44,6 +44,7 @@ const PLAYBACK_MAX_DURATION_MS = GAME_CONFIG.run.playbackMaxDurationMs;
 const PLAYBACK_MAX_DOWNWARD_VELOCITY_UNITS_PER_SECOND = GAME_CONFIG.run.playbackMaxDownwardVelocityUnitsPerSecond;
 const PLAYBACK_MAX_VELOCITY_UNITS_PER_SECOND = GAME_CONFIG.run.playbackMaxVelocityUnitsPerSecond;
 const PLAYBACK_MIN_DURATION_MS = GAME_CONFIG.run.playbackMinDurationMs;
+const PLAYBACK_OBSTACLE_VELOCITY_RETENTION = GAME_CONFIG.run.playbackObstacleVelocityRetention;
 const PLAYBACK_PATH_UNITS_PER_SECOND = GAME_CONFIG.run.playbackPathUnitsPerSecond;
 const PLAYBACK_SIMULATION_STEP_MS = GAME_CONFIG.run.playbackSimulationStepMs;
 const PLAYBACK_WALL_REBOUND_MAX_NORMAL_COMPONENT = GAME_CONFIG.run.playbackWallReboundMaxNormalComponent;
@@ -1479,8 +1480,9 @@ function createMotionTimeline(
     defeatedEnemyCount: 0,
     validScoringTargetCount: activeEnemyIds.size
   });
-  const maxCollisionSteps = Math.max(targetComboCount, 1) * 24;
+  const maxCollisionSteps = Math.max(targetComboCount, 1) * 200;
   const maxIntegrationStepsPerCollision = Math.max(Math.ceil((requestedDurationMs / PLAYBACK_SIMULATION_STEP_MS) * 6), 90);
+  let previousCollisionWasObstacle = false;
 
   for (; endReason === null && steps.length < maxCollisionSteps; ) {
     const activeEnemyEntities = enemyEntities.filter((entity) => activeEnemyIds.has(entity.id));
@@ -1552,12 +1554,19 @@ function createMotionTimeline(
       const nextDirection = "targetEntityId" in firstCollision
         ? tuneWallReboundDirection(reflectedDirection, firstCollision.normal)
         : reflectedDirection;
+      const retainedSpeed = "obstacle" in firstCollision
+        ? (previousCollisionWasObstacle && impactSpeed > PLAYBACK_BASE_VELOCITY_UNITS_PER_SECOND * 1.2
+            ? impactSpeed * PLAYBACK_OBSTACLE_VELOCITY_RETENTION
+            : impactSpeed)
+        : impactSpeed;
 
-      currentVelocity = {
-        x: nextDirection.x * impactSpeed,
-        y: nextDirection.y * impactSpeed
-      };
+      currentVelocity = clampVelocity({
+        x: nextDirection.x * retainedSpeed,
+        y: nextDirection.y * retainedSpeed
+      });
     }
+
+    previousCollisionWasObstacle = "obstacle" in firstCollision;
 
     if ("enemy" in firstCollision) {
       endReason = determineRunEndReason({

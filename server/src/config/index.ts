@@ -44,6 +44,7 @@ export const GAME_CONFIG = {
     playbackMaxVelocityUnitsPerSecond: 2.8,
     playbackMaxDownwardVelocityUnitsPerSecond: 2.1,
     playbackHorizontalVelocityDampingPerSecond: 0.9,
+    playbackObstacleVelocityRetention: 0.97,
     playbackEnemyCollisionRadius: 0.045,
     playbackEnemyInitialHealth: "6000",
     playfieldPlacementInset: 0.025,
