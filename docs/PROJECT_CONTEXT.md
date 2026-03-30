@@ -109,6 +109,7 @@ Current Gameplay Foundation (PROTOTYPE)
 - Energy accumulation is capped by `maxEnergy`
 - Upgrade system affects generation and power
 - Run entry cost exists through `runEnergyCost`
+- Run power is now derived server-side from player `teamPower`
 - Reward output currently grants:
   - currency from damage
   - progression from combo
@@ -128,11 +129,11 @@ Current Gameplay Foundation (PROTOTYPE)
   - lastUpdateTimestampMs
 
 Deterministic run simulation currently implemented:
-- fixed-duration runs
 - seeded RNG
 - summary output:
   - totalDamage
   - comboCount
+  - endReason
   - summary triggers
 - playback output:
   - arena snapshot
@@ -141,18 +142,28 @@ Deterministic run simulation currently implemented:
 
 Playback currently supports:
 - one ball
-- a small deterministic enemy set
+- a shaped inner playfield boundary
+- a deterministic enemy set with HP / defeat
+- deterministic obstacles
+- deterministic flippers
 - phase events
-- straight-line ball path segments
+- server-authored path segments that approximate gravity-driven arcs
 - collision events
 - damage events
 - sparse trigger events
 
 Playback feel and structure currently implemented:
-- trajectory-driven motion between collisions
-- deterministic wall rebounds
+- gravity-influenced motion with deterministic integration
+- deterministic wall rebounds against the authored playfield boundary
 - enemy collision contact points on collision boundaries instead of enemy centers
-- reflection-based post-impact redirection
+- reflection-based post-impact redirection for walls, enemies, and obstacles
+- flipper relaunches shaped by contact position along the active paddle
+- obstacle damping and collision-type-specific pacing
+- enemies removed from future targeting immediately after defeat
+- multiple deterministic run completion reasons:
+  - `TARGET_COMBO_REACHED`
+  - `ALL_ENEMIES_DEFEATED`
+  - `NO_VALID_TARGETS`
 - no client-side path inference
 - no target-homing between collisions
 
@@ -172,21 +183,25 @@ Frontend replay currently maps the server playback timeline into:
 - rolling total damage
 - combo display
 - sparse UI trigger banners
+- animated flipper activation
+- defeated-enemy disappearance
 - end-of-run summary reveal
 
 Frontend replay presentation now also includes:
 - arena-first layout
 - combo as the primary live HUD signal
 - secondary rolling damage HUD
+- visible rails derived from the playfield boundary
 - tighter collision / damage / finisher timing emphasis
+- differentiated collision styling for walls, obstacles, enemies, and flippers
 - finish-beat pacing before summary reveal
 
-This system is still considered **foundational scaffolding**, but the current live loop is no longer target direction only:
+This system is still considered **foundational scaffolding**, but the current live loop is now a real board-state-driven replay foundation:
 - idle energy accumulation
 - deterministic run trigger
 - server-calculated rewards
 - playback-driven frontend replay
-- trajectory-driven rebound playback with deterministic collision timing
+- shaped-board playback with flippers, gravity, and enemy defeat
 
 ---
 
@@ -304,9 +319,9 @@ Current status:
 - OpenAPI contract generation + generated client wrappers exist
 
 Next likely expansion areas:
-- replace temporary client-provided combat input with server-authoritative team state
+- move remaining temporary combat knobs fully behind server-side team state
 - extend natural trigger emission as more gameplay systems appear
-- deepen replay presentation without moving simulation logic client-side
+- build on enemy defeat with richer combat state and target lifecycle
 - build richer team/synergy systems on top of the current deterministic run contract
 
 ---
@@ -316,7 +331,8 @@ Next likely expansion areas:
 - real multiplayer
 - gacha system implementation
 - character collection depth
-- full combat physics / flippers / gravity / paddle systems
+- full rigid-body combat physics / spin / angular momentum systems
+- player-controlled flipper timing or manual input systems
 - advanced UI polish
 - social systems
 

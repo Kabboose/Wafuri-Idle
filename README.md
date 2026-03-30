@@ -14,11 +14,13 @@ Wafuri-Idle is being built as a server-authoritative idle game foundation with d
 - Energy accumulation is capped by `maxEnergy`
 - Upgrades increase both `teamPower` and `energyPerSecond`
 - Players can spend energy to trigger deterministic runs through `POST /run`
+- The server derives run power from the player team state instead of trusting a client damage value
 - Run rewards currently grant currency from damage and progression from combo
 - Run playback currently includes:
   - arena
   - entities
   - ordered events
+  - explicit end reason
 - Playback events currently include:
   - phase markers
   - ball paths
@@ -26,15 +28,20 @@ Wafuri-Idle is being built as a server-authoritative idle game foundation with d
   - damage events
   - sparse trigger events
 - Run playback is now trajectory-driven and pinball-inspired:
-  - normalized playfield walls
-  - multiple deterministic enemy targets
+  - authored inner playfield boundary with rendered side rails
+  - deterministic enemy, obstacle, and flipper entities
   - contact-point enemy collisions
-  - wall rebounds
-  - heading-driven motion between collisions
+  - gravity-influenced motion with flipper relaunches
+  - wall, obstacle, enemy, and flipper collision differentiation
+  - enemy defeat and removal from future targeting
+  - content-driven replay duration and timing beats
 - The frontend now renders a replay view from the server playback timeline with:
   - arena-first presentation
   - combo-focused live HUD
   - rolling total damage
+  - animated flipper activation
+  - defeated-enemy removal during playback
+  - end-reason summary
   - collision / damage / finisher timing emphasis
 - Guest accounts can be created explicitly from the entry screen
 - Registered accounts can log in with username/password
@@ -70,6 +77,14 @@ The short version is:
 - result phase: evaluate output and grant rewards
 
 This is being designed so the same run outputs can later support async multiplayer systems such as guild-boss contributions, leaderboards, and shared progression without rewriting the core simulation model.
+
+The current replay foundation is already beyond simple scaffolding:
+
+- shaped inner board boundary instead of a plain square box
+- deterministic obstacles and flippers inside the authored playfield
+- gravity-guided motion that returns the ball toward the lower board
+- enemy HP / defeat with board-state changes during a run
+- multiple deterministic run completion reasons
 
 ## Just Commands
 
