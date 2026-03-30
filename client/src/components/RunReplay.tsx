@@ -23,6 +23,11 @@ function formatFixed(value: string): string {
   return `${negative ? "-" : ""}${whole.toString()}.${trimmedFraction}`;
 }
 
+/** Converts the server-authored end reason into a readable replay summary label. */
+function formatRunEndReason(endReason: RunResult["endReason"]): string {
+  return endReason.toLowerCase().split("_").map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+}
+
 /** Converts a normalized path segment into an absolutely positioned visual trail segment. */
 function getPathSegmentStyle(pathEvent: PlaybackBallPathEvent, timelineMs: number): CSSProperties | null {
   if (timelineMs <= pathEvent.timelineStartMs) {
@@ -251,7 +256,7 @@ export function RunReplay({
               ))}
 
             {runResult.playback.entities
-              .filter((entity) => entity.kind === "ENEMY")
+              .filter((entity) => entity.kind === "ENEMY" && !frame.defeatedEnemyIds.has(entity.id))
               .map((entity) => (
                 <div
                   key={entity.id}
@@ -303,6 +308,10 @@ export function RunReplay({
           <div>
             <span className="run-replay-summary-label">Progression Gained</span>
             <strong>{formatFixed(rewardResult?.grantedResources.progression ?? "0")}</strong>
+          </div>
+          <div>
+            <span className="run-replay-summary-label">End Reason</span>
+            <strong>{formatRunEndReason(runResult.endReason)}</strong>
           </div>
         </div>
       </div>

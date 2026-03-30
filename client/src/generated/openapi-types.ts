@@ -137,7 +137,6 @@ export type PlayerStateResponse = {
 };
 
 export type RunRequest = {
-  "power": string;
   "speed": number;
   "critChance": number;
   "runDurationMs"?: number;
@@ -291,6 +290,7 @@ export type RunPlayback = {
 export type RunResult = {
   "totalDamage": string;
   "comboCount": number;
+  "endReason": "TARGET_COMBO_REACHED" | "ALL_ENEMIES_DEFEATED" | "NO_VALID_TARGETS";
   "triggers": Array<RunSummaryTriggerEvent>;
   "durationMs": number;
   "playback": RunPlayback;

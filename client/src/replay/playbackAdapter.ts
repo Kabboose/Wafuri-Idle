@@ -33,6 +33,7 @@ export type PlaybackFrame = {
   } | null;
   rollingTotalDamage: string;
   comboAfter: number;
+  defeatedEnemyIds: Set<string>;
   worldCues: WorldCue[];
   uiCues: UiCue[];
   activeCollision: PlaybackCollisionEvent | null;
@@ -237,6 +238,17 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
   const uiCues = activeTriggerEvents
     .map((event) => mapTriggerCue(event).uiCue)
     .filter((cue): cue is UiCue => Boolean(cue));
+  const defeatedEnemyIds = new Set(
+    playback.events
+      .filter(
+        (event): event is PlaybackTriggerEvent =>
+          event.kind === "TRIGGER" &&
+          event.triggerKind === "ENEMY_DEFEATED" &&
+          event.timelineTimestampMs <= clampedTimelineMs &&
+          Boolean(event.targetEntityId)
+      )
+      .map((event) => event.targetEntityId!)
+  );
   const lastDamageEvent = damageEvents.length > 0 ? damageEvents[damageEvents.length - 1] : undefined;
   const activeCollision = activeCollisionEvents.length > 0 ? activeCollisionEvents[activeCollisionEvents.length - 1] : null;
   const activeFlipperCollision = activeFlipperCollisionEvents.length > 0
@@ -252,6 +264,7 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
     ballPosition: getBallPosition(playback.events, clampedTimelineMs),
     rollingTotalDamage: damageEvents.reduce((total, event) => (total + BigInt(event.damage)), 0n).toString(),
     comboAfter: lastDamageEvent?.comboAfter ?? 0,
+    defeatedEnemyIds,
     worldCues,
     uiCues,
     activeCollision,

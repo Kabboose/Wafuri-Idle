@@ -869,11 +869,8 @@
       "RunRequest": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["power", "speed", "critChance"],
+        "required": ["speed", "critChance"],
         "properties": {
-          "power": {
-            "type": "string"
-          },
           "speed": {
             "type": "number"
           },
@@ -1370,13 +1367,17 @@
       "RunResult": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["totalDamage", "comboCount", "triggers", "durationMs", "playback"],
+        "required": ["totalDamage", "comboCount", "endReason", "triggers", "durationMs", "playback"],
         "properties": {
           "totalDamage": {
             "type": "string"
           },
           "comboCount": {
             "type": "integer"
+          },
+          "endReason": {
+            "type": "string",
+            "enum": ["TARGET_COMBO_REACHED", "ALL_ENEMIES_DEFEATED", "NO_VALID_TARGETS"]
           },
           "triggers": {
             "type": "array",

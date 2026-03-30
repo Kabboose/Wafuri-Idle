@@ -976,14 +976,10 @@
         "type": "object",
         "additionalProperties": false,
         "required": [
-          "power",
           "speed",
           "critChance"
         ],
         "properties": {
-          "power": {
-            "type": "string"
-          },
           "speed": {
             "type": "number"
           },
@@ -1574,6 +1570,7 @@
         "required": [
           "totalDamage",
           "comboCount",
+          "endReason",
           "triggers",
           "durationMs",
           "playback"
@@ -1584,6 +1581,14 @@
           },
           "comboCount": {
             "type": "integer"
+          },
+          "endReason": {
+            "type": "string",
+            "enum": [
+              "TARGET_COMBO_REACHED",
+              "ALL_ENEMIES_DEFEATED",
+              "NO_VALID_TARGETS"
+            ]
           },
           "triggers": {
             "type": "array",

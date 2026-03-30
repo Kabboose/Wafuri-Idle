@@ -4,7 +4,7 @@ import { updatePlayerOptimistically } from "../db/playerRepository.js";
 import { getCachedPlayerState, setCachedPlayerState } from "./cacheService.js";
 import { applyIdleEnergy } from "./idle.service.js";
 import { calculateRewards } from "./reward.service.js";
-import { canStartRun, spendRunEnergy } from "./run.service.js";
+import { calculateRunPower, canStartRun, spendRunEnergy } from "./run.service.js";
 import { simulateRun } from "./runSimulation.service.js";
 import { stringifyFixed } from "../utils/fixedPoint.js";
 import type { TeamConfig, RunResult, RewardResult } from "../utils/runTypes.js";
@@ -17,12 +17,12 @@ export type RunPlayerActionResult = {
 };
 
 /** Builds a deterministic run seed from the orchestration inputs only. */
-function buildRunSeed(accountId: string, playerId: string, teamConfig: TeamConfig, nowMs: number): string {
+function buildRunSeed(accountId: string, playerId: string, teamPower: number, teamConfig: TeamConfig, nowMs: number): string {
   return JSON.stringify({
     accountId,
     playerId,
     nowMs,
-    power: teamConfig.power,
+    teamPower,
     speed: teamConfig.speed,
     critChance: teamConfig.critChance,
     runDurationMs: teamConfig.runDurationMs ?? null
@@ -89,13 +89,14 @@ export async function runPlayerAction(
     }
 
     const spentPlayer = spendRunEnergy(progressedPlayer);
+    const runPower = calculateRunPower(currentPlayer.teamPower);
     const runResult = simulateRun({
       playerId: currentPlayer.id,
       nowMs,
-      seed: buildRunSeed(accountId, currentPlayer.id, teamConfig, nowMs),
+      seed: buildRunSeed(accountId, currentPlayer.id, currentPlayer.teamPower, teamConfig, nowMs),
       runDurationMs: teamConfig.runDurationMs ?? 0,
       combatStats: {
-        power: teamConfig.power,
+        power: runPower.toString(),
         speed: teamConfig.speed,
         critChance: teamConfig.critChance
       }

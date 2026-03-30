@@ -5,6 +5,7 @@ import type {
   PhaseEvent,
   PlaybackEntity,
   PlaybackEvent,
+  RunEndReason,
   RunInput,
   RunPlayback,
   RunResult,
@@ -17,6 +18,7 @@ const BASE_CRIT_DAMAGE_MULTIPLIER = BigInt(GAME_CONFIG.run.baseCritDamageMultipl
 const BASE_CRIT_CHANCE_SCALE = GAME_CONFIG.run.baseCritChanceScale;
 const PLAYBACK_COMBO_MILESTONE_THRESHOLDS = new Set<number>(GAME_CONFIG.run.playbackComboMilestoneThresholds);
 const PLAYBACK_ENEMY_COLLISION_RADIUS = GAME_CONFIG.run.playbackEnemyCollisionRadius;
+const PLAYBACK_ENEMY_INITIAL_HEALTH = BigInt(GAME_CONFIG.run.playbackEnemyInitialHealth);
 const PLAYBACK_FINISHER_LEAD_MS = GAME_CONFIG.run.playbackFinisherLeadMs;
 const PLAYBACK_FLIPPER_HEIGHT = GAME_CONFIG.run.playbackFlipperHeight;
 const PLAYBACK_FLIPPER_INSET_X = GAME_CONFIG.run.playbackFlipperInsetX;
@@ -40,10 +42,11 @@ const CONTAINER_TOP_WALL_ID = "container-wall-top";
 const CONTAINER_BOTTOM_WALL_ID = "container-wall-bottom";
 
 type SimulatedHit = {
+  targetEntityId: string;
   damage: bigint;
   comboAfter: number;
   isCrit: boolean;
-  timestampMs: number;
+  defeatedEnemyId?: string;
 };
 
 type EnemyTarget = PlaybackEntity & { kind: "ENEMY" };
@@ -89,6 +92,20 @@ type MotionStep = {
   hit?: SimulatedHit;
   speedMultiplier: number;
 };
+type MotionTimelineResult = {
+  events: PlaybackEvent[];
+  totalDamage: bigint;
+  comboCount: number;
+  endReason: RunEndReason;
+  durationMs: number;
+};
+type RunCompletionState = {
+  targetComboCount: number;
+  comboCount: number;
+  totalEnemyCount: number;
+  defeatedEnemyCount: number;
+  validScoringTargetCount: number;
+};
 
 /** Hashes the provided seed string into a deterministic 32-bit unsigned integer. */
 function hashSeed(seed: string): number {
@@ -122,6 +139,23 @@ function calculateHitCount(speed: number, durationMs: number): number {
   const normalizedSpeed = Math.max(Math.floor(speed), 0);
 
   return Math.floor((normalizedSpeed * durationMs) / SPEED_SCALE);
+}
+
+/** Resolves the deterministic reason a run should end, or null when it should continue. */
+export function determineRunEndReason(state: RunCompletionState): RunEndReason | null {
+  if (state.comboCount >= state.targetComboCount) {
+    return "TARGET_COMBO_REACHED";
+  }
+
+  if (state.totalEnemyCount > 0 && state.defeatedEnemyCount >= state.totalEnemyCount) {
+    return "ALL_ENEMIES_DEFEATED";
+  }
+
+  if (state.validScoringTargetCount <= 0) {
+    return "NO_VALID_TARGETS";
+  }
+
+  return null;
 }
 
 /** Maps a seeded random value into a normalized inclusive range. */
@@ -1066,6 +1100,26 @@ function createComboMilestoneTrigger(
   };
 }
 
+/** Builds a deterministic playback trigger for an enemy defeat. */
+function createEnemyDefeatedTrigger(
+  timelineTimestampMs: number,
+  ballEntityId: string,
+  enemyEntityId: string,
+  x: number,
+  y: number
+): TriggerEvent {
+  return {
+    kind: "TRIGGER",
+    timelineTimestampMs,
+    placement: "WORLD",
+    triggerKind: "ENEMY_DEFEATED",
+    entityId: ballEntityId,
+    targetEntityId: enemyEntityId,
+    x,
+    y
+  };
+}
+
 /** Builds a deterministic playback trigger for the run finisher beat. */
 function createRunFinisherTrigger(durationMs: number, ballEntityId: string): TriggerEvent {
   return {
@@ -1081,10 +1135,12 @@ function createRunFinisherTrigger(durationMs: number, ballEntityId: string): Tri
 function createMotionTimeline(
   seed: string,
   entities: PlaybackEntity[],
-  durationMs: number,
-  hits: SimulatedHit[],
+  requestedDurationMs: number,
+  targetComboCount: number,
+  power: bigint,
+  critChance: number,
   arena: ArenaSnapshot
-): PlaybackEvent[] {
+): MotionTimelineResult {
   const ballEntity = entities.find((entity) => entity.kind === "BALL");
   const enemyEntities = entities.filter((entity): entity is EnemyTarget => entity.kind === "ENEMY");
   const obstacleEntities = entities.filter((entity): entity is ObstacleTarget => entity.kind === "OBSTACLE");
@@ -1092,13 +1148,28 @@ function createMotionTimeline(
     (entity): entity is FlipperTarget => entity.kind === "ARENA" && entity.collision?.type === "BOX"
   );
 
-  if (!ballEntity || enemyEntities.length === 0 || durationMs <= 0 || hits.length === 0) {
-    return [];
+  if (!ballEntity || requestedDurationMs <= 0) {
+    return {
+      events: [],
+      totalDamage: 0n,
+      comboCount: 0,
+      endReason: determineRunEndReason({
+        targetComboCount,
+        comboCount: 0,
+        totalEnemyCount: enemyEntities.length,
+        defeatedEnemyCount: 0,
+        validScoringTargetCount: enemyEntities.length
+      }) ?? "NO_VALID_TARGETS",
+      durationMs: 0
+    };
   }
 
   const enemySequence = createEnemySequence(seed, enemyEntities);
   const enemySequenceOrder = new Map(enemySequence.map((enemy, index) => [enemy.id, index]));
+  const enemyHealthById = new Map(enemyEntities.map((enemy) => [enemy.id, PLAYBACK_ENEMY_INITIAL_HEALTH]));
+  const activeEnemyIds = new Set(enemyEntities.map((enemy) => enemy.id));
   const steps: MotionStep[] = [];
+  const nextRandom = createSeededRng(seed);
   let currentPoint = {
     x: ballEntity.spawnX,
     y: ballEntity.spawnY
@@ -1110,19 +1181,29 @@ function createMotionTimeline(
     { x: 0.42, y: -1 }
   );
   let currentSpeedMultiplier = 1;
-  const maxSteps = hits.length * 24;
+  let comboCount = 0;
+  let totalDamage = 0n;
+  let endReason = determineRunEndReason({
+    targetComboCount,
+    comboCount,
+    totalEnemyCount: enemyEntities.length,
+    defeatedEnemyCount: 0,
+    validScoringTargetCount: activeEnemyIds.size
+  });
+  const maxSteps = Math.max(targetComboCount, 1) * 24;
 
-  for (let hitIndex = 0; hitIndex < hits.length && steps.length < maxSteps; ) {
+  for (; endReason === null && steps.length < maxSteps; ) {
     const flipperCollision = getFlipperCollision(currentPoint, currentDirection, flipperEntities);
     const boundaryCollision = getWallCollision(
       currentPoint,
       currentDirection,
       arena.playfieldBoundary.segments
     );
+    const activeEnemyEntities = enemyEntities.filter((entity) => activeEnemyIds.has(entity.id));
     const circularCollision = getCircularCollision(
       currentPoint,
       currentDirection,
-      [...enemyEntities, ...obstacleEntities],
+      [...activeEnemyEntities, ...obstacleEntities],
       enemySequenceOrder
     );
     const firstCollision = [flipperCollision, circularCollision, boundaryCollision]
@@ -1147,6 +1228,31 @@ function createMotionTimeline(
       throw new Error("Unable to resolve playback motion collision");
     }
 
+    let hit: SimulatedHit | undefined;
+
+    if ("enemy" in firstCollision) {
+      const isCriticalHit = nextRandom() < critChance / BASE_CRIT_CHANCE_SCALE;
+      const hitDamage = isCriticalHit ? power * BASE_CRIT_DAMAGE_MULTIPLIER : power;
+      const remainingHealth = (enemyHealthById.get(firstCollision.enemy.id) ?? 0n) - hitDamage;
+      const defeatedEnemyId = remainingHealth <= 0n ? firstCollision.enemy.id : undefined;
+
+      enemyHealthById.set(firstCollision.enemy.id, remainingHealth > 0n ? remainingHealth : 0n);
+
+      if (defeatedEnemyId) {
+        activeEnemyIds.delete(defeatedEnemyId);
+      }
+
+      comboCount += 1;
+      totalDamage += hitDamage;
+      hit = {
+        targetEntityId: firstCollision.enemy.id,
+        damage: hitDamage,
+        comboAfter: comboCount,
+        isCrit: isCriticalHit,
+        defeatedEnemyId
+      };
+    }
+
     steps.push({
       from: currentPoint,
       to: {
@@ -1154,7 +1260,7 @@ function createMotionTimeline(
         y: firstCollision.y
       },
       collision: firstCollision,
-      hit: "enemy" in firstCollision ? hits[hitIndex] : undefined,
+      hit,
       speedMultiplier: currentSpeedMultiplier
     });
 
@@ -1174,18 +1280,35 @@ function createMotionTimeline(
     }
 
     if ("enemy" in firstCollision) {
-      hitIndex += 1;
+      endReason = determineRunEndReason({
+        targetComboCount,
+        comboCount,
+        totalEnemyCount: enemyEntities.length,
+        defeatedEnemyCount: enemyEntities.length - activeEnemyIds.size,
+        validScoringTargetCount: activeEnemyIds.size
+      });
     }
   }
 
-  if (steps.length >= maxSteps && steps.filter((step) => "enemy" in step.collision).length < hits.length) {
-    throw new Error("Playback motion exceeded deterministic step budget before resolving enemy hits");
+  if (endReason === null) {
+    throw new Error("Playback motion exceeded deterministic step budget before resolving run completion");
   }
 
   if (steps.length === 0) {
-    return [];
+    return {
+      events: [],
+      totalDamage,
+      comboCount,
+      endReason,
+      durationMs: 0
+    };
   }
 
+  const durationMs = endReason === "TARGET_COMBO_REACHED"
+    ? requestedDurationMs
+    : targetComboCount > 0
+      ? Math.max(Math.floor((comboCount / targetComboCount) * requestedDurationMs), 1)
+      : 0;
   const stepTravelWeights = steps.map((step) => (
     getVectorLength(step.to.x - step.from.x, step.to.y - step.from.y) / Math.max(step.speedMultiplier, Number.EPSILON)
   ));
@@ -1238,7 +1361,22 @@ function createMotionTimeline(
           damage: step.hit?.damage.toString() ?? "0",
           comboAfter: step.hit?.comboAfter ?? 0,
           isCrit: step.hit?.isCrit ?? false
-        },
+        }
+      );
+
+      if (step.hit?.defeatedEnemyId) {
+        events.push(
+          createEnemyDefeatedTrigger(
+            segmentEnd,
+            ballEntity.id,
+            step.hit.defeatedEnemyId,
+            step.to.x,
+            step.to.y
+          )
+        );
+      }
+
+      events.push(
         createImpactBurstTrigger(
           segmentEnd,
           ballEntity.id,
@@ -1282,19 +1420,31 @@ function createMotionTimeline(
     }
   }
 
-  return events;
+  return {
+    events,
+    totalDamage,
+    comboCount,
+    endReason,
+    durationMs
+  };
 }
 
 /** Builds the minimal deterministic playback payload for a simulated run. */
-function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]): RunPlayback {
-  const entities = createPlaybackEntities(seed);
+function createPlayback(
+  seed: string,
+  entities: PlaybackEntity[],
+  requestedDurationMs: number,
+  targetComboCount: number,
+  power: bigint,
+  critChance: number
+): { playback: RunPlayback; totalDamage: bigint; comboCount: number; endReason: RunEndReason; durationMs: number } {
   const arena: ArenaSnapshot = {
     width: 1,
     height: 1,
     zones: [],
     playfieldBoundary: createPlayfieldBoundary()
   };
-  const motionEvents = createMotionTimeline(seed, entities, durationMs, hits, arena);
+  const motionResult = createMotionTimeline(seed, entities, requestedDurationMs, targetComboCount, power, critChance, arena);
   const phaseEvents: PhaseEvent[] = [
     {
       kind: "PHASE",
@@ -1303,12 +1453,12 @@ function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]):
     },
     {
       kind: "PHASE",
-      timelineTimestampMs: durationMs,
+      timelineTimestampMs: motionResult.durationMs,
       phase: "FINISH"
     }
   ];
-  const runFinisherEvent = createRunFinisherTrigger(durationMs, "ball-1");
-  const events = [phaseEvents[0], ...motionEvents, phaseEvents[1]];
+  const runFinisherEvent = createRunFinisherTrigger(motionResult.durationMs, "ball-1");
+  const events = [phaseEvents[0], ...motionResult.events, phaseEvents[1]];
   const finisherInsertIndex = events.findIndex((event) => getPlaybackEventTime(event) > runFinisherEvent.timelineTimestampMs);
 
   if (finisherInsertIndex === -1) {
@@ -1318,7 +1468,7 @@ function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]):
   }
 
   const playback: RunPlayback = {
-    durationMs,
+    durationMs: motionResult.durationMs,
     arena,
     entities,
     events
@@ -1326,49 +1476,58 @@ function createPlayback(seed: string, durationMs: number, hits: SimulatedHit[]):
 
   validatePlayback(playback);
 
-  return playback;
+  return {
+    playback,
+    totalDamage: motionResult.totalDamage,
+    comboCount: motionResult.comboCount,
+    endReason: motionResult.endReason,
+    durationMs: motionResult.durationMs
+  };
 }
 
 /** Simulates a deterministic fixed-duration run and returns aggregate combat output only. */
 export function simulateRun(input: RunInput): RunResult {
-  const durationMs = Math.max(Math.floor(input.runDurationMs), 0) || DEFAULT_RUN_DURATION_MS;
+  const requestedDurationMs = Math.max(Math.floor(input.runDurationMs), 0) || DEFAULT_RUN_DURATION_MS;
   const power = BigInt(input.combatStats.power);
   const critChance = clampBps(input.combatStats.critChance);
-  const hitCount = calculateHitCount(input.combatStats.speed, durationMs);
-  const nextRandom = createSeededRng(input.seed);
-  const triggers: RunTriggerEvent[] = [];
-  const hits: SimulatedHit[] = [];
-  let totalDamage = 0n;
-  let comboCount = 0;
+  const targetComboCount = calculateHitCount(input.combatStats.speed, requestedDurationMs);
+  const playbackEntities = createPlaybackEntities(input.seed);
+  const playbackResult = createPlayback(
+    input.seed,
+    playbackEntities,
+    requestedDurationMs,
+    targetComboCount,
+    power,
+    critChance
+  );
+  const triggers: RunTriggerEvent[] = playbackResult.playback.events.flatMap((event) => {
+    if (event.kind === "DAMAGE") {
+      return [{
+        type: event.isCrit ? "critical-hit" : "hit",
+        source: "basic-attack",
+        timestampMs: input.nowMs + event.timelineTimestampMs,
+        value: event.damage,
+        comboDelta: 1
+      }];
+    }
 
-  for (let hitIndex = 0; hitIndex < hitCount; hitIndex += 1) {
-    const isCriticalHit = nextRandom() < critChance / BASE_CRIT_CHANCE_SCALE;
-    const hitDamage = isCriticalHit ? power * BASE_CRIT_DAMAGE_MULTIPLIER : power;
-    const timestampMs = input.nowMs + Math.floor(((hitIndex + 1) * durationMs) / Math.max(hitCount, 1));
+    if (event.kind === "TRIGGER" && event.triggerKind === "ENEMY_DEFEATED" && event.targetEntityId) {
+      return [{
+        type: "enemy-defeated",
+        source: event.targetEntityId,
+        timestampMs: input.nowMs + event.timelineTimestampMs
+      }];
+    }
 
-    totalDamage += hitDamage;
-    comboCount += 1;
-    hits.push({
-      damage: hitDamage,
-      comboAfter: comboCount,
-      isCrit: isCriticalHit,
-      timestampMs
-    });
-
-    triggers.push({
-      type: isCriticalHit ? "critical-hit" : "hit",
-      source: "basic-attack",
-      timestampMs,
-      value: hitDamage.toString(),
-      comboDelta: 1
-    });
-  }
+    return [];
+  });
 
   return {
-    totalDamage: totalDamage.toString(),
-    comboCount,
+    totalDamage: playbackResult.totalDamage.toString(),
+    comboCount: playbackResult.comboCount,
+    endReason: playbackResult.endReason,
     triggers,
-    durationMs,
-    playback: createPlayback(input.seed, durationMs, hits)
+    durationMs: playbackResult.durationMs,
+    playback: playbackResult.playback
   };
 }

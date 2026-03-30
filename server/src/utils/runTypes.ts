@@ -10,7 +10,6 @@ export interface PlayerCombatStats {
 
 /** Team-provided combat configuration used to derive a single run simulation input. */
 export interface TeamConfig {
-  power: BigIntString;
   speed: number;
   critChance: number;
   runDurationMs?: number;
@@ -33,6 +32,9 @@ export interface RunTriggerEvent {
   value?: BigIntString;
   comboDelta?: number;
 }
+
+/** Explicit reason that caused a deterministic run to complete. */
+export type RunEndReason = "TARGET_COMBO_REACHED" | "ALL_ENEMIES_DEFEATED" | "NO_VALID_TARGETS";
 
 /** Arena snapshot used to replay a simulated run in normalized space. */
 export interface ArenaSnapshot {
@@ -202,6 +204,7 @@ export type PlaybackEvent = BallPathEvent | CollisionEvent | DamageEvent | Trigg
 export interface RunResult {
   totalDamage: BigIntString;
   comboCount: number;
+  endReason: RunEndReason;
   triggers: RunTriggerEvent[];
   durationMs: number;
   playback: RunPlayback;

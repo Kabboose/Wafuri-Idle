@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { canStartRun, spendRunEnergy } from "./run.service.js";
+import { calculateRunPower, canStartRun, spendRunEnergy } from "./run.service.js";
 import type { PlayerMutation } from "../utils/playerTypes.js";
 
 function createPlayerState(overrides: Partial<PlayerMutation> = {}): PlayerMutation {
@@ -39,4 +39,9 @@ test("spendRunEnergy deducts the configured cost exactly once", () => {
 
 test("spendRunEnergy throws when energy is insufficient", () => {
   assert.throws(() => spendRunEnergy(createPlayerState({ energy: 9999999n })), /Not enough energy to start run/);
+});
+
+test("calculateRunPower derives authoritative run power from team power on the server", () => {
+  assert.equal(calculateRunPower(10), 5000n);
+  assert.equal(calculateRunPower(0), 0n);
 });

@@ -10,9 +10,9 @@ function parseTeamConfig(body: unknown): TeamConfig {
     throw new Error("Invalid run request");
   }
 
-  const { power, speed, critChance, runDurationMs } = body as Record<string, unknown>;
+  const { speed, critChance, runDurationMs } = body as Record<string, unknown>;
 
-  if (typeof power !== "string" || typeof speed !== "number" || typeof critChance !== "number") {
+  if (typeof speed !== "number" || typeof critChance !== "number") {
     throw new Error("Invalid run request");
   }
 
@@ -25,7 +25,6 @@ function parseTeamConfig(body: unknown): TeamConfig {
   }
 
   return {
-    power,
     speed,
     critChance,
     ...(runDurationMs !== undefined ? { runDurationMs } : {})

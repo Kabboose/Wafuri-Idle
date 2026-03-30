@@ -35,10 +35,9 @@ function formatWholeFixed(value: string): string {
   return `${negative ? "-" : ""}${whole.toString()}`;
 }
 
-/** Builds the temporary client-side run request payload expected by the current backend API. */
-function buildRunRequest(playerState: PlayerState): RunRequest {
+/** Builds the current client-side run intent payload expected by the backend API. */
+function buildRunRequest(): RunRequest {
   return {
-    power: (BigInt(playerState.teamPower) * GAMEPLAY_CONFIG.run.powerScalePerTeamPower).toString(),
     speed: GAMEPLAY_CONFIG.run.defaultSpeed,
     critChance: GAMEPLAY_CONFIG.run.defaultCritChance,
     runDurationMs: GAMEPLAY_CONFIG.run.defaultDurationMs
@@ -142,7 +141,7 @@ export function GameScreen({
     }
 
     try {
-      const runActionResult = await runPlayer(buildRunRequest(playerState));
+      const runActionResult = await runPlayer(buildRunRequest());
       setPlayerState(runActionResult.player);
       setLatestRunResult(runActionResult.runResult);
       setLatestRewardResult(runActionResult.rewardResult);

@@ -23,6 +23,7 @@ function createRunResult(overrides: Partial<RunResult> = {}): RunResult {
   return {
     totalDamage: "2500",
     comboCount: 4,
+    endReason: "TARGET_COMBO_REACHED",
     triggers: [],
     durationMs: 10_000,
     playback: playbackFixture,

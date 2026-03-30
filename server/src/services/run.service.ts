@@ -2,6 +2,7 @@ import { GAME_CONFIG } from "../config/index.js";
 import type { PlayerMutation } from "../utils/playerTypes.js";
 
 const RUN_ENERGY_COST = BigInt(GAME_CONFIG.run.runEnergyCost);
+const RUN_POWER_SCALE_PER_TEAM_POWER = BigInt(GAME_CONFIG.run.powerScalePerTeamPower);
 
 type RunEligiblePlayerState = Pick<
   PlayerMutation,
@@ -23,4 +24,9 @@ export function spendRunEnergy(playerState: RunEligiblePlayerState): PlayerMutat
     ...playerState,
     energy: playerState.energy - RUN_ENERGY_COST
   };
+}
+
+/** Derives authoritative run power from the player's current team power using server-side balance config. */
+export function calculateRunPower(teamPower: number): bigint {
+  return BigInt(Math.max(Math.floor(teamPower), 0)) * RUN_POWER_SCALE_PER_TEAM_POWER;
 }

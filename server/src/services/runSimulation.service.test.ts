@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { GAME_CONFIG } from "../config/index.js";
-import { simulateRun } from "./runSimulation.service.js";
+import { determineRunEndReason, simulateRun } from "./runSimulation.service.js";
 import type { PlaybackEvent, RunInput } from "../utils/runTypes.js";
 
 const CONTAINER_TOP_WALL_ID = "container-wall-top";
@@ -129,6 +129,49 @@ test("simulateRun is deterministic for the same input and seed", () => {
   assert.deepEqual(simulateRun(input), simulateRun(input));
 });
 
+test("determineRunEndReason supports the current and future-safe run completion reasons", () => {
+  assert.equal(
+    determineRunEndReason({
+      targetComboCount: 10,
+      comboCount: 10,
+      totalEnemyCount: 4,
+      defeatedEnemyCount: 0,
+      validScoringTargetCount: 4
+    }),
+    "TARGET_COMBO_REACHED"
+  );
+  assert.equal(
+    determineRunEndReason({
+      targetComboCount: 10,
+      comboCount: 6,
+      totalEnemyCount: 4,
+      defeatedEnemyCount: 4,
+      validScoringTargetCount: 0
+    }),
+    "ALL_ENEMIES_DEFEATED"
+  );
+  assert.equal(
+    determineRunEndReason({
+      targetComboCount: 10,
+      comboCount: 3,
+      totalEnemyCount: 4,
+      defeatedEnemyCount: 1,
+      validScoringTargetCount: 0
+    }),
+    "NO_VALID_TARGETS"
+  );
+  assert.equal(
+    determineRunEndReason({
+      targetComboCount: 10,
+      comboCount: 3,
+      totalEnemyCount: 4,
+      defeatedEnemyCount: 1,
+      validScoringTargetCount: 2
+    }),
+    null
+  );
+});
+
 test("simulateRun changes output when the seed changes", () => {
   const baseInput = createRunInput();
   const changedSeedInput = createRunInput({ seed: "seed-456" });
@@ -140,7 +183,8 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   const result = simulateRun(createRunInput());
 
   assert.equal(result.comboCount, 10);
-  assert.equal(result.triggers.length, 10);
+  assert.equal(result.endReason, "TARGET_COMBO_REACHED");
+  assert.ok(result.triggers.filter((trigger) => trigger.type === "hit" || trigger.type === "critical-hit").length === 10);
   assert.equal(result.durationMs, 10_000);
   assert.equal(result.playback.durationMs, 10_000);
   assert.deepEqual(result.playback.arena, {
@@ -292,7 +336,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.ok(wallCollisionEvents.length >= 1);
   assert.ok(flipperCollisionEvents.length >= 1);
   assert.equal(damageEvents.length, 10);
-  assert.equal(triggerEvents.length, 13);
+  assert.ok(triggerEvents.length >= 13);
   assert.ok(
     ballPathEvents.every(
       (event) =>
@@ -334,6 +378,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
   const impactBurstEvents = triggerEvents.filter((event) => event.triggerKind === "IMPACT_BURST");
   const comboMilestoneEvents = triggerEvents.filter((event) => event.triggerKind === "COMBO_MILESTONE");
+  const enemyDefeatedEvents = triggerEvents.filter((event) => event.triggerKind === "ENEMY_DEFEATED");
   const runFinisherEvents = triggerEvents.filter((event) => event.triggerKind === "RUN_FINISHER");
   assert.equal(impactBurstEvents.length, 10);
   assert.equal(comboMilestoneEvents.length, 2);
@@ -385,6 +430,18 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     [5, 10]
   );
   assert.equal(runFinisherEvents[0]?.timelineTimestampMs, 9_750);
+  assert.ok(
+    enemyDefeatedEvents.every((event) => {
+      if (!event.targetEntityId) {
+        return false;
+      }
+
+      const defeatEventIndex = result.playback.events.findIndex((candidateEvent) => candidateEvent === event);
+      const previousEvent = defeatEventIndex > 0 ? result.playback.events[defeatEventIndex - 1] : undefined;
+
+      return previousEvent?.kind === "DAMAGE" && previousEvent.targetEntityId === event.targetEntityId;
+    })
+  );
 
   for (let index = 0; index < enemyCollisionEvents.length; index += 1) {
     const collisionEventIndex: number = result.playback.events.findIndex((event) => event === enemyCollisionEvents[index]);
@@ -615,7 +672,11 @@ test("simulateRun applies crit logic deterministically", () => {
   );
 
   assert.equal(result.totalDamage, "20000");
-  assert.ok(result.triggers.every((trigger) => trigger.type === "critical-hit"));
+  assert.ok(
+    result.triggers
+      .filter((trigger) => trigger.comboDelta === 1)
+      .every((trigger) => trigger.type === "critical-hit")
+  );
   const damageEvents = result.playback.events.filter((event) => event.kind === "DAMAGE");
   const impactBurstEvents = result.playback.events.filter(
     (event): event is Extract<PlaybackEvent, { kind: "TRIGGER" }> =>
@@ -626,4 +687,48 @@ test("simulateRun applies crit logic deterministically", () => {
     impactBurstEvents.map((event) => event.detail?.damage),
     damageEvents.map((event) => event.damage)
   );
+});
+
+test("simulateRun removes defeated enemies from future targeting and can end when all enemies are defeated", () => {
+  const result = simulateRun(
+    createRunInput({
+      seed: "clear-board",
+      combatStats: {
+        power: "6000",
+        speed: 1,
+        critChance: 0
+      }
+    })
+  );
+
+  assert.equal(result.endReason, "ALL_ENEMIES_DEFEATED");
+  assert.equal(result.comboCount, 4);
+  assert.equal(result.totalDamage, "24000");
+  assert.ok(result.durationMs < 10_000);
+
+  const damageEvents = result.playback.events.filter((event) => event.kind === "DAMAGE");
+  const defeatEvents = result.playback.events.filter(
+    (event): event is Extract<PlaybackEvent, { kind: "TRIGGER" }> =>
+      event.kind === "TRIGGER" && event.triggerKind === "ENEMY_DEFEATED"
+  );
+
+  assert.equal(damageEvents.length, 4);
+  assert.equal(defeatEvents.length, 4);
+  assert.ok(result.triggers.filter((trigger) => trigger.type === "enemy-defeated").length === 4);
+
+  for (const defeatEvent of defeatEvents) {
+    const defeatEventIndex = result.playback.events.findIndex((event) => event === defeatEvent);
+    const previousEvent = defeatEventIndex > 0 ? result.playback.events[defeatEventIndex - 1] : undefined;
+    const futureEnemyEvents = result.playback.events
+      .slice(defeatEventIndex + 1)
+      .filter(
+        (event) =>
+          (event.kind === "COLLISION" || event.kind === "DAMAGE") &&
+          event.targetEntityId === defeatEvent.targetEntityId
+      );
+
+    assert.equal(previousEvent?.kind, "DAMAGE");
+    assert.equal(previousEvent?.kind === "DAMAGE" ? previousEvent.targetEntityId : undefined, defeatEvent.targetEntityId);
+    assert.equal(futureEnemyEvents.length, 0);
+  }
 });
