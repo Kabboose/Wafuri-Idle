@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
 
+import { GAME_CONFIG } from "../config/index.js";
 import { prisma } from "../db/prisma.js";
 import { redis } from "../db/redis.js";
 import { findPlayerIdentityByAccountId } from "../db/identityRepo.js";
@@ -41,7 +42,8 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
   assert.equal(result.runResult.comboCount, 4);
   assert.equal(result.runResult.endReason, "ALL_ENEMIES_DEFEATED");
   assert.equal(result.runResult.totalDamage, "40000");
-  assert.equal(result.runResult.playback.durationMs, 4_000);
+  assert.ok(result.runResult.playback.durationMs >= GAME_CONFIG.run.playbackMinDurationMs);
+  assert.ok(result.runResult.playback.durationMs <= GAME_CONFIG.run.playbackMaxDurationMs);
   assert.deepEqual(result.runResult.playback.arena, {
     width: 1,
     height: 1,
@@ -80,7 +82,7 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
   assert.notEqual(finishEventIndex, -1);
   assert.deepEqual(result.runResult.playback.events[finishEventIndex], {
     kind: "PHASE",
-    timelineTimestampMs: 4_000,
+    timelineTimestampMs: result.runResult.playback.durationMs,
     phase: "FINISH"
   });
   const ballPathEvents = result.runResult.playback.events.filter((event) => event.kind === "BALL_PATH");

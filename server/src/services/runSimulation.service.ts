@@ -16,10 +16,12 @@ import type {
 const DEFAULT_RUN_DURATION_MS = GAME_CONFIG.run.defaultDurationMs;
 const BASE_CRIT_DAMAGE_MULTIPLIER = BigInt(GAME_CONFIG.run.baseCritDamageMultiplier);
 const BASE_CRIT_CHANCE_SCALE = GAME_CONFIG.run.baseCritChanceScale;
+const PLAYBACK_COLLISION_BEAT_MS = GAME_CONFIG.run.playbackCollisionBeatMs;
 const PLAYBACK_COMBO_MILESTONE_THRESHOLDS = new Set<number>(GAME_CONFIG.run.playbackComboMilestoneThresholds);
+const PLAYBACK_DEFEAT_BEAT_MS = GAME_CONFIG.run.playbackDefeatBeatMs;
 const PLAYBACK_ENEMY_COLLISION_RADIUS = GAME_CONFIG.run.playbackEnemyCollisionRadius;
 const PLAYBACK_ENEMY_INITIAL_HEALTH = BigInt(GAME_CONFIG.run.playbackEnemyInitialHealth);
-const PLAYBACK_FINISHER_LEAD_MS = GAME_CONFIG.run.playbackFinisherLeadMs;
+const PLAYBACK_FINISH_BEAT_MS = GAME_CONFIG.run.playbackFinishBeatMs;
 const PLAYBACK_FLIPPER_HEIGHT = GAME_CONFIG.run.playbackFlipperHeight;
 const PLAYBACK_FLIPPER_INSET_X = GAME_CONFIG.run.playbackFlipperInsetX;
 const PLAYBACK_FLIPPER_RESTING_ANGLE_DEGREES = GAME_CONFIG.run.playbackFlipperRestingAngleDegrees;
@@ -35,6 +37,9 @@ const MAX_PLACEMENT_RETRIES = GAME_CONFIG.run.maxPlacementRetries;
 const MIXED_PLACEMENT_PADDING = GAME_CONFIG.run.mixedPlacementPadding;
 const OBSTACLE_PLACEMENT_PADDING = GAME_CONFIG.run.obstaclePlacementPadding;
 const PLAYFIELD_PLACEMENT_INSET = GAME_CONFIG.run.playfieldPlacementInset;
+const PLAYBACK_MAX_DURATION_MS = GAME_CONFIG.run.playbackMaxDurationMs;
+const PLAYBACK_MIN_DURATION_MS = GAME_CONFIG.run.playbackMinDurationMs;
+const PLAYBACK_PATH_UNITS_PER_SECOND = GAME_CONFIG.run.playbackPathUnitsPerSecond;
 const PLAYBACK_WALL_REBOUND_MAX_NORMAL_COMPONENT = GAME_CONFIG.run.playbackWallReboundMaxNormalComponent;
 const PLAYBACK_WALL_REBOUND_MIN_NORMAL_COMPONENT = GAME_CONFIG.run.playbackWallReboundMinNormalComponent;
 const SPEED_SCALE = GAME_CONFIG.run.speedScale;
@@ -98,6 +103,7 @@ type MotionTimelineResult = {
   comboCount: number;
   endReason: RunEndReason;
   durationMs: number;
+  finishBeatMs: number;
 };
 type RunCompletionState = {
   targetComboCount: number;
@@ -1121,13 +1127,116 @@ function createEnemyDefeatedTrigger(
 }
 
 /** Builds a deterministic playback trigger for the run finisher beat. */
-function createRunFinisherTrigger(durationMs: number, ballEntityId: string): TriggerEvent {
+function createRunFinisherTrigger(durationMs: number, finishBeatMs: number, ballEntityId: string): TriggerEvent {
   return {
     kind: "TRIGGER",
-    timelineTimestampMs: Math.max(durationMs - PLAYBACK_FINISHER_LEAD_MS, 0),
+    timelineTimestampMs: Math.max(durationMs - finishBeatMs, 0),
     placement: "UI",
     triggerKind: "RUN_FINISHER",
     entityId: ballEntityId
+  };
+}
+
+/** Converts a playback path distance into a stable travel duration at the configured replay speed. */
+function calculatePathDurationMs(distance: number, speedMultiplier: number): number {
+  const playbackUnitsPerSecond = Math.max(PLAYBACK_PATH_UNITS_PER_SECOND, Number.EPSILON);
+  const normalizedSpeedMultiplier = Math.max(speedMultiplier, Number.EPSILON);
+  const durationMs = (distance / (playbackUnitsPerSecond * normalizedSpeedMultiplier)) * 1000;
+
+  return Math.max(Math.round(durationMs), 1);
+}
+
+/** Returns the deterministic pause to apply immediately after a collision step. */
+function getStepBeatMs(step: MotionStep): number {
+  return step.hit?.defeatedEnemyId ? PLAYBACK_DEFEAT_BEAT_MS : PLAYBACK_COLLISION_BEAT_MS;
+}
+
+/** Builds a timing plan from motion content instead of forcing the replay into a fixed total duration. */
+function createStepTimingPlan(steps: MotionStep[]): { pathDurationsMs: number[]; finishBeatMs: number; durationMs: number } {
+  if (steps.length === 0) {
+    return {
+      pathDurationsMs: [],
+      finishBeatMs: PLAYBACK_FINISH_BEAT_MS,
+      durationMs: 0
+    };
+  }
+
+  const naturalPathDurationsMs = steps.map((step) => {
+    const distance = getVectorLength(step.to.x - step.from.x, step.to.y - step.from.y);
+
+    return calculatePathDurationMs(distance, step.speedMultiplier);
+  });
+  const fixedBeatTotalMs = steps.reduce((totalBeatMs, step) => totalBeatMs + getStepBeatMs(step), 0);
+  const naturalPathTotalMs = naturalPathDurationsMs.reduce((totalMs, durationMs) => totalMs + durationMs, 0);
+  const naturalPathBudgetMs = naturalPathTotalMs || steps.length;
+  const minimumDurationMs = Math.max(PLAYBACK_MIN_DURATION_MS, 0);
+  const maximumDurationMs = Math.max(PLAYBACK_MAX_DURATION_MS, minimumDurationMs);
+  const naturalDurationMs = naturalPathTotalMs + fixedBeatTotalMs + PLAYBACK_FINISH_BEAT_MS;
+
+  if (naturalDurationMs < minimumDurationMs) {
+    return {
+      pathDurationsMs: naturalPathDurationsMs,
+      finishBeatMs: PLAYBACK_FINISH_BEAT_MS + (minimumDurationMs - naturalDurationMs),
+      durationMs: minimumDurationMs
+    };
+  }
+
+  if (naturalDurationMs <= maximumDurationMs) {
+    return {
+      pathDurationsMs: naturalPathDurationsMs,
+      finishBeatMs: PLAYBACK_FINISH_BEAT_MS,
+      durationMs: naturalDurationMs
+    };
+  }
+
+  const availablePathBudgetMs = maximumDurationMs - fixedBeatTotalMs - PLAYBACK_FINISH_BEAT_MS;
+
+  if (availablePathBudgetMs <= steps.length) {
+    const minimumPathDurationsMs = steps.map(() => 1);
+    const durationMs =
+      minimumPathDurationsMs.reduce((totalMs, durationMs) => totalMs + durationMs, 0) +
+      fixedBeatTotalMs +
+      PLAYBACK_FINISH_BEAT_MS;
+
+    return {
+      pathDurationsMs: minimumPathDurationsMs,
+      finishBeatMs: PLAYBACK_FINISH_BEAT_MS,
+      durationMs
+    };
+  }
+
+  const scaledPathDurationsMs = naturalPathDurationsMs.map((durationMs) => Math.max(Math.round(
+    (durationMs / naturalPathBudgetMs) * availablePathBudgetMs
+  ), 1));
+  let remainingAdjustmentMs =
+    availablePathBudgetMs - scaledPathDurationsMs.reduce((totalMs, durationMs) => totalMs + durationMs, 0);
+
+  while (remainingAdjustmentMs !== 0) {
+    let adjustedThisPass = false;
+
+    for (let index = scaledPathDurationsMs.length - 1; index >= 0 && remainingAdjustmentMs !== 0; index -= 1) {
+      const nextDurationMs = scaledPathDurationsMs[index]! + (remainingAdjustmentMs > 0 ? 1 : -1);
+
+      if (nextDurationMs < 1) {
+        continue;
+      }
+
+      scaledPathDurationsMs[index] = nextDurationMs;
+      remainingAdjustmentMs += remainingAdjustmentMs > 0 ? -1 : 1;
+      adjustedThisPass = true;
+    }
+
+    if (!adjustedThisPass) {
+      break;
+    }
+  }
+
+  const scaledPathTotalMs = scaledPathDurationsMs.reduce((totalMs, durationMs) => totalMs + durationMs, 0);
+
+  return {
+    pathDurationsMs: scaledPathDurationsMs,
+    finishBeatMs: PLAYBACK_FINISH_BEAT_MS,
+    durationMs: scaledPathTotalMs + fixedBeatTotalMs + PLAYBACK_FINISH_BEAT_MS
   };
 }
 
@@ -1160,7 +1269,8 @@ function createMotionTimeline(
         defeatedEnemyCount: 0,
         validScoringTargetCount: enemyEntities.length
       }) ?? "NO_VALID_TARGETS",
-      durationMs: 0
+      durationMs: 0,
+      finishBeatMs: PLAYBACK_FINISH_BEAT_MS
     };
   }
 
@@ -1300,34 +1410,18 @@ function createMotionTimeline(
       totalDamage,
       comboCount,
       endReason,
-      durationMs: 0
+      durationMs: 0,
+      finishBeatMs: PLAYBACK_FINISH_BEAT_MS
     };
   }
-
-  const durationMs = endReason === "TARGET_COMBO_REACHED"
-    ? requestedDurationMs
-    : targetComboCount > 0
-      ? Math.max(Math.floor((comboCount / targetComboCount) * requestedDurationMs), 1)
-      : 0;
-  const stepTravelWeights = steps.map((step) => (
-    getVectorLength(step.to.x - step.from.x, step.to.y - step.from.y) / Math.max(step.speedMultiplier, Number.EPSILON)
-  ));
-  const totalTravelWeight = stepTravelWeights.reduce((totalWeight, stepWeight) => totalWeight + stepWeight, 0) || 1;
+  const timingPlan = createStepTimingPlan(steps);
   const events: PlaybackEvent[] = [];
-  let elapsedTravelWeight = 0;
-  let previousSegmentEnd = 0;
+  let currentTimelineMs = 0;
 
   for (let stepIndex = 0; stepIndex < steps.length; stepIndex += 1) {
     const step = steps[stepIndex];
-    const segmentStart = previousSegmentEnd;
-    elapsedTravelWeight += stepTravelWeights[stepIndex] ?? 0;
-    const remainingSegments = steps.length - stepIndex - 1;
-    const maxSegmentEnd = durationMs - remainingSegments;
-    const proportionalSegmentEnd = stepIndex === steps.length - 1
-      ? durationMs
-      : Math.round((elapsedTravelWeight / totalTravelWeight) * durationMs);
-    const segmentEnd = Math.min(Math.max(proportionalSegmentEnd, segmentStart + 1), maxSegmentEnd);
-    previousSegmentEnd = segmentEnd;
+    const segmentStart = currentTimelineMs;
+    const segmentEnd = segmentStart + (timingPlan.pathDurationsMs[stepIndex] ?? 1);
 
     events.push({
       kind: "BALL_PATH",
@@ -1418,6 +1512,8 @@ function createMotionTimeline(
         y: step.to.y
       });
     }
+
+    currentTimelineMs = segmentEnd + getStepBeatMs(step);
   }
 
   return {
@@ -1425,7 +1521,8 @@ function createMotionTimeline(
     totalDamage,
     comboCount,
     endReason,
-    durationMs
+    durationMs: timingPlan.durationMs,
+    finishBeatMs: timingPlan.finishBeatMs
   };
 }
 
@@ -1457,7 +1554,11 @@ function createPlayback(
       phase: "FINISH"
     }
   ];
-  const runFinisherEvent = createRunFinisherTrigger(motionResult.durationMs, "ball-1");
+  const runFinisherEvent = createRunFinisherTrigger(
+    motionResult.durationMs,
+    motionResult.finishBeatMs,
+    "ball-1"
+  );
   const events = [phaseEvents[0], ...motionResult.events, phaseEvents[1]];
   const finisherInsertIndex = events.findIndex((event) => getPlaybackEventTime(event) > runFinisherEvent.timelineTimestampMs);
 

@@ -38,6 +38,10 @@ function getPathDirection(event: Extract<PlaybackEvent, { kind: "BALL_PATH" }>) 
   };
 }
 
+function getPathLength(event: Extract<PlaybackEvent, { kind: "BALL_PATH" }>): number {
+  return Math.sqrt((event.toX - event.fromX) ** 2 + (event.toY - event.fromY) ** 2);
+}
+
 function degreesToRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;
 }
@@ -185,8 +189,9 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.equal(result.comboCount, 10);
   assert.equal(result.endReason, "TARGET_COMBO_REACHED");
   assert.ok(result.triggers.filter((trigger) => trigger.type === "hit" || trigger.type === "critical-hit").length === 10);
-  assert.equal(result.durationMs, 10_000);
-  assert.equal(result.playback.durationMs, 10_000);
+  assert.equal(result.durationMs, result.playback.durationMs);
+  assert.ok(result.durationMs >= GAME_CONFIG.run.playbackMinDurationMs);
+  assert.ok(result.durationMs <= GAME_CONFIG.run.playbackMaxDurationMs);
   assert.deepEqual(result.playback.arena, {
     width: 1,
     height: 1,
@@ -318,7 +323,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.notEqual(finishEventIndex, -1);
   assert.deepEqual(result.playback.events[finishEventIndex], {
     kind: "PHASE",
-    timelineTimestampMs: 10_000,
+    timelineTimestampMs: result.playback.durationMs,
     phase: "FINISH"
   });
 
@@ -341,7 +346,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     ballPathEvents.every(
       (event) =>
         event.timelineStartMs >= 0 &&
-        event.timelineEndMs <= 10_000 &&
+        event.timelineEndMs <= result.playback.durationMs &&
         event.timelineStartMs < event.timelineEndMs
     )
   );
@@ -355,7 +360,9 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   assert.ok(collisionEvents.some((event) => event.collisionKind === "BALL_ENEMY"));
   assert.ok(collisionEvents.some((event) => event.collisionKind === "BALL_OBSTACLE"));
   assert.ok(collisionEvents.some((event) => event.collisionKind === "BALL_FLIPPER"));
-  assert.ok(triggerEvents.every((event) => event.timelineTimestampMs >= 0 && event.timelineTimestampMs <= 10_000));
+  assert.ok(
+    triggerEvents.every((event) => event.timelineTimestampMs >= 0 && event.timelineTimestampMs <= result.playback.durationMs)
+  );
   assert.ok(new Set(enemyCollisionEvents.map((event) => event.targetEntityId)).size > 1);
   assert.ok(new Set(obstacleCollisionEvents.map((event) => event.targetEntityId)).size >= 1);
   assert.ok(new Set(flipperCollisionEvents.map((event) => event.targetEntityId)).size >= 1);
@@ -429,7 +436,10 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
     comboMilestoneEvents.map((event) => event.detail?.comboThreshold),
     [5, 10]
   );
-  assert.equal(runFinisherEvents[0]?.timelineTimestampMs, 9_750);
+  assert.equal(
+    runFinisherEvents[0]?.timelineTimestampMs,
+    result.playback.durationMs - GAME_CONFIG.run.playbackFinishBeatMs
+  );
   assert.ok(
     enemyDefeatedEvents.every((event) => {
       if (!event.targetEntityId) {
@@ -645,17 +655,50 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
       return (
         event.timelineTimestampMs === previousPath.timelineEndMs &&
-        event.timelineTimestampMs === nextPath.timelineStartMs &&
         Math.abs(event.x - previousPath.toX) < 0.000001 &&
         Math.abs(event.y - previousPath.toY) < 0.000001 &&
         Math.abs(event.x - nextPath.fromX) < 0.000001 &&
-        Math.abs(event.y - nextPath.fromY) < 0.000001
+        Math.abs(event.y - nextPath.fromY) < 0.000001 &&
+        nextPath.timelineStartMs >= event.timelineTimestampMs
       );
     });
 
     assert.equal(previousPath.toX, nextPath.fromX);
     assert.equal(previousPath.toY, nextPath.fromY);
     assert.ok(collisionBetweenPaths, "path direction changed without an intervening collision");
+  }
+
+  const unitSpeedPathEvents = ballPathEvents.filter((pathEvent) => {
+    const pathIndex = result.playback.events.findIndex((event) => event === pathEvent);
+    const previousCollision = [...result.playback.events.slice(0, pathIndex)]
+      .reverse()
+      .find((event) => event.kind === "COLLISION");
+
+    return previousCollision?.kind !== "COLLISION" || previousCollision.collisionKind !== "BALL_FLIPPER";
+  });
+
+  const unitSpeedSamples = unitSpeedPathEvents.map((pathEvent) => ({
+    length: getPathLength(pathEvent),
+    durationMs: pathEvent.timelineEndMs - pathEvent.timelineStartMs,
+    playbackUnitsPerSecond: (getPathLength(pathEvent) / (pathEvent.timelineEndMs - pathEvent.timelineStartMs)) * 1000
+  })).sort((left, right) => left.length - right.length);
+  const playbackSpeedRange = unitSpeedSamples.reduce((range, sample) => ({
+    min: Math.min(range.min, sample.playbackUnitsPerSecond),
+    max: Math.max(range.max, sample.playbackUnitsPerSecond)
+  }), {
+    min: Number.POSITIVE_INFINITY,
+    max: 0
+  });
+
+  assert.ok(unitSpeedSamples.length > 0);
+  assert.ok(playbackSpeedRange.max - playbackSpeedRange.min <= 0.05);
+
+  for (let index = 1; index < unitSpeedSamples.length; index += 1) {
+    if (unitSpeedSamples[index]!.length - unitSpeedSamples[index - 1]!.length <= 0.005) {
+      continue;
+    }
+
+    assert.ok(unitSpeedSamples[index]!.durationMs >= unitSpeedSamples[index - 1]!.durationMs);
   }
 });
 
@@ -704,7 +747,8 @@ test("simulateRun removes defeated enemies from future targeting and can end whe
   assert.equal(result.endReason, "ALL_ENEMIES_DEFEATED");
   assert.equal(result.comboCount, 4);
   assert.equal(result.totalDamage, "24000");
-  assert.ok(result.durationMs < 10_000);
+  assert.ok(result.durationMs >= GAME_CONFIG.run.playbackMinDurationMs);
+  assert.ok(result.durationMs <= GAME_CONFIG.run.playbackMaxDurationMs);
 
   const damageEvents = result.playback.events.filter((event) => event.kind === "DAMAGE");
   const defeatEvents = result.playback.events.filter(
