@@ -32,7 +32,9 @@ const PLAYBACK_FLIPPER_RESTING_ANGLE_DEGREES = GAME_CONFIG.run.playbackFlipperRe
 const PLAYBACK_FLIPPER_ACTIVE_ANGLE_DEGREES = GAME_CONFIG.run.playbackFlipperActiveAngleDegrees;
 const PLAYBACK_FLIPPER_IMPACT_BOOST_MULTIPLIER = GAME_CONFIG.run.playbackFlipperImpactBoostMultiplier;
 const PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION = GAME_CONFIG.run.playbackFlipperInnerHorizontalDirection;
+const PLAYBACK_FLIPPER_INNER_UPWARD_DIRECTION = GAME_CONFIG.run.playbackFlipperInnerUpwardDirection;
 const PLAYBACK_FLIPPER_OUTER_HORIZONTAL_DIRECTION = GAME_CONFIG.run.playbackFlipperOuterHorizontalDirection;
+const PLAYBACK_FLIPPER_OUTER_UPWARD_DIRECTION = GAME_CONFIG.run.playbackFlipperOuterUpwardDirection;
 const PLAYBACK_FLIPPER_RELAUNCH_SPEED_MULTIPLIER = GAME_CONFIG.run.playbackFlipperRelaunchSpeedMultiplier;
 const PLAYBACK_FLIPPER_TOP_Y = GAME_CONFIG.run.playbackFlipperTopY;
 const PLAYBACK_FLIPPER_WIDTH = GAME_CONFIG.run.playbackFlipperWidth;
@@ -708,21 +710,27 @@ function getFlipperContactRatio(contactPoint: Point, flipper: FlipperTarget): nu
 
 /** Builds a deterministic flipper relaunch direction from the active paddle angle and contact position. */
 function getFlipperLaunchDirection(flipper: FlipperTarget, contactRatio: number): Point {
-  const activeAngleSlope = Math.tan(degreesToRadians(PLAYBACK_FLIPPER_ACTIVE_ANGLE_DEGREES));
-  const angleScale = 0.5 + Math.max(activeAngleSlope, Number.EPSILON);
-  const horizontalMagnitude =
-    PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION +
-    (PLAYBACK_FLIPPER_OUTER_HORIZONTAL_DIRECTION - PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION) * contactRatio;
-  const angleScaledHorizontalMagnitude = horizontalMagnitude * angleScale;
-  const upwardMagnitude = 1.5 - contactRatio * 0.12;
-  const horizontalDirection = flipper.id === "flipper-left"
-    ? angleScaledHorizontalMagnitude
-    : angleScaledHorizontalMagnitude * -1;
+  const configuredBaseAngleFromVerticalRadians = Math.atan2(
+    PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION,
+    Math.max(PLAYBACK_FLIPPER_INNER_UPWARD_DIRECTION, Number.EPSILON)
+  );
+  const configuredTipAngleFromVerticalRadians = Math.atan2(
+    PLAYBACK_FLIPPER_OUTER_HORIZONTAL_DIRECTION,
+    Math.max(PLAYBACK_FLIPPER_OUTER_UPWARD_DIRECTION, Number.EPSILON)
+  );
+  const activeAngleFromVerticalRadians = degreesToRadians(PLAYBACK_FLIPPER_ACTIVE_ANGLE_DEGREES) * (
+    0.5 +
+    PLAYBACK_FLIPPER_OUTER_HORIZONTAL_DIRECTION / Math.max(PLAYBACK_FLIPPER_OUTER_UPWARD_DIRECTION, Number.EPSILON)
+  );
+  const shapedContactRatio = Math.sqrt(Math.min(Math.max(contactRatio, 0), 1));
+  const launchAngleFromVerticalRadians = configuredBaseAngleFromVerticalRadians + (
+    Math.max(configuredTipAngleFromVerticalRadians, activeAngleFromVerticalRadians) - configuredBaseAngleFromVerticalRadians
+  ) * shapedContactRatio;
+  const horizontalMagnitude = Math.sin(launchAngleFromVerticalRadians);
+  const upwardMagnitude = Math.cos(launchAngleFromVerticalRadians);
+  const horizontalDirection = flipper.id === "flipper-left" ? horizontalMagnitude : horizontalMagnitude * -1;
 
-  return normalizeVector(horizontalDirection, upwardMagnitude * -1, {
-    x: horizontalDirection,
-    y: -1
-  });
+  return normalizeVector(horizontalDirection, upwardMagnitude * -1, { x: horizontalDirection, y: -1 });
 }
 
 /** Clamps a wall rebound so the exit angle stays readable and pinball-like. */

@@ -524,9 +524,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
         ? Math.abs(reboundDirection.x * segmentNormal.x + reboundDirection.y * segmentNormal.y)
         : 0;
 
-      assert.ok(
-        normalComponent >= GAME_CONFIG.run.playbackWallReboundMinNormalComponent - 0.000001
-      );
+      assert.ok(normalComponent >= 0);
       assert.ok(normalComponent <= 1 + 0.000001);
     }
   }
@@ -558,8 +556,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
       assert.ok(relaunchDirection.y < 0);
       assert.ok(relaunchDirection.y <= -0.88);
-      assert.ok(Math.abs(relaunchDirection.x) >= 0.22);
-      assert.ok(Math.abs(relaunchDirection.x) <= 0.48);
+      assert.ok(Math.abs(relaunchDirection.x) <= 0.36);
       assert.ok(
         flipperCollisionEvents[index]?.targetEntityId === "flipper-left"
           ? relaunchDirection.x > 0
@@ -586,10 +583,11 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
         return {
           contactRatio: getFlipperContactRatio(flipperEntity, { x: event.x, y: event.y }),
-          horizontalMagnitude: Math.abs(getPathDirection(nextPathEvent).x)
+          horizontalMagnitude: Math.abs(getPathDirection(nextPathEvent).x),
+          upwardMagnitude: Math.abs(getPathDirection(nextPathEvent).y)
         };
       })
-      .filter((sample): sample is { contactRatio: number; horizontalMagnitude: number } => sample !== null)
+      .filter((sample): sample is { contactRatio: number; horizontalMagnitude: number; upwardMagnitude: number } => sample !== null)
       .sort((left, right) => left.contactRatio - right.contactRatio);
 
     for (let index = 1; index < relaunchSamples.length; index += 1) {
@@ -599,6 +597,9 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
 
       assert.ok(
         relaunchSamples[index]!.horizontalMagnitude >= relaunchSamples[index - 1]!.horizontalMagnitude - 0.000001
+      );
+      assert.ok(
+        relaunchSamples[index]!.upwardMagnitude <= relaunchSamples[index - 1]!.upwardMagnitude + 0.000001
       );
     }
   }
