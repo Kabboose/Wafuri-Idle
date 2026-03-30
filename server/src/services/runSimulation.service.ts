@@ -21,6 +21,7 @@ const PLAYBACK_COMBO_MILESTONE_THRESHOLDS = new Set<number>(GAME_CONFIG.run.play
 const PLAYBACK_DEFEAT_BEAT_MS = GAME_CONFIG.run.playbackDefeatBeatMs;
 const PLAYBACK_ENEMY_COLLISION_RADIUS = GAME_CONFIG.run.playbackEnemyCollisionRadius;
 const PLAYBACK_ENEMY_INITIAL_HEALTH = BigInt(GAME_CONFIG.run.playbackEnemyInitialHealth);
+const PLAYBACK_BASE_VELOCITY_UNITS_PER_SECOND = GAME_CONFIG.run.playbackBaseVelocityUnitsPerSecond;
 const PLAYBACK_FINISH_BEAT_MS = GAME_CONFIG.run.playbackFinishBeatMs;
 const PLAYBACK_FLIPPER_HEIGHT = GAME_CONFIG.run.playbackFlipperHeight;
 const PLAYBACK_FLIPPER_INSET_X = GAME_CONFIG.run.playbackFlipperInsetX;
@@ -37,9 +38,14 @@ const MAX_PLACEMENT_RETRIES = GAME_CONFIG.run.maxPlacementRetries;
 const MIXED_PLACEMENT_PADDING = GAME_CONFIG.run.mixedPlacementPadding;
 const OBSTACLE_PLACEMENT_PADDING = GAME_CONFIG.run.obstaclePlacementPadding;
 const PLAYFIELD_PLACEMENT_INSET = GAME_CONFIG.run.playfieldPlacementInset;
+const PLAYBACK_GRAVITY_UNITS_PER_SECOND_SQUARED = GAME_CONFIG.run.playbackGravityUnitsPerSecondSquared;
+const PLAYBACK_HORIZONTAL_VELOCITY_DAMPING_PER_SECOND = GAME_CONFIG.run.playbackHorizontalVelocityDampingPerSecond;
 const PLAYBACK_MAX_DURATION_MS = GAME_CONFIG.run.playbackMaxDurationMs;
+const PLAYBACK_MAX_DOWNWARD_VELOCITY_UNITS_PER_SECOND = GAME_CONFIG.run.playbackMaxDownwardVelocityUnitsPerSecond;
+const PLAYBACK_MAX_VELOCITY_UNITS_PER_SECOND = GAME_CONFIG.run.playbackMaxVelocityUnitsPerSecond;
 const PLAYBACK_MIN_DURATION_MS = GAME_CONFIG.run.playbackMinDurationMs;
 const PLAYBACK_PATH_UNITS_PER_SECOND = GAME_CONFIG.run.playbackPathUnitsPerSecond;
+const PLAYBACK_SIMULATION_STEP_MS = GAME_CONFIG.run.playbackSimulationStepMs;
 const PLAYBACK_WALL_REBOUND_MAX_NORMAL_COMPONENT = GAME_CONFIG.run.playbackWallReboundMaxNormalComponent;
 const PLAYBACK_WALL_REBOUND_MIN_NORMAL_COMPONENT = GAME_CONFIG.run.playbackWallReboundMinNormalComponent;
 const SPEED_SCALE = GAME_CONFIG.run.speedScale;
@@ -90,12 +96,16 @@ type FlipperCollision = Point & {
   direction: Point;
   speedMultiplier: number;
 };
-type MotionStep = {
+type MotionPathSegment = {
   from: Point;
   to: Point;
+  speedMultiplier: number;
+};
+type MotionStep = {
+  pathSegments: MotionPathSegment[];
   collision: WallCollision | EnemyCollision | ObstacleCollision | FlipperCollision;
   hit?: SimulatedHit;
-  speedMultiplier: number;
+  impactVelocity: Point;
 };
 type MotionTimelineResult = {
   events: PlaybackEvent[];
@@ -552,6 +562,35 @@ function getVectorLength(x: number, y: number): number {
   return Math.sqrt(x * x + y * y);
 }
 
+/** Clamps a velocity vector to the configured maximum magnitude without changing direction. */
+function clampVelocity(velocity: Point): Point {
+  const magnitude = getVectorLength(velocity.x, velocity.y);
+
+  if (magnitude <= PLAYBACK_MAX_VELOCITY_UNITS_PER_SECOND) {
+    return velocity;
+  }
+
+  const clampedDirection = normalizeVector(velocity.x, velocity.y, { x: 0, y: -1 });
+
+  return {
+    x: clampedDirection.x * PLAYBACK_MAX_VELOCITY_UNITS_PER_SECOND,
+    y: clampedDirection.y * PLAYBACK_MAX_VELOCITY_UNITS_PER_SECOND
+  };
+}
+
+/** Applies the configured downward speed cap and light horizontal damping to keep arcs readable. */
+function shapeVelocityForGravity(velocity: Point, elapsedSeconds: number): Point {
+  const dampingFactor = Math.pow(
+    Math.min(Math.max(PLAYBACK_HORIZONTAL_VELOCITY_DAMPING_PER_SECOND, 0), 1),
+    Math.max(elapsedSeconds, 0)
+  );
+
+  return clampVelocity({
+    x: velocity.x * dampingFactor,
+    y: Math.min(velocity.y, PLAYBACK_MAX_DOWNWARD_VELOCITY_UNITS_PER_SECOND)
+  });
+}
+
 /** Normalizes a simple 2D vector, falling back to the provided default when degenerate. */
 function normalizeVector(x: number, y: number, fallback: Point): Point {
   const length = getVectorLength(x, y);
@@ -668,7 +707,7 @@ function getFlipperLaunchDirection(flipper: FlipperTarget, contactRatio: number)
     PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION +
     (PLAYBACK_FLIPPER_OUTER_HORIZONTAL_DIRECTION - PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION) * contactRatio;
   const angleScaledHorizontalMagnitude = horizontalMagnitude * angleScale;
-  const upwardMagnitude = 1.34 - contactRatio * 0.18;
+  const upwardMagnitude = 1.5 - contactRatio * 0.12;
   const horizontalDirection = flipper.id === "flipper-left"
     ? angleScaledHorizontalMagnitude
     : angleScaledHorizontalMagnitude * -1;
@@ -722,7 +761,8 @@ function createEnemySequence(seed: string, enemyEntities: EnemyTarget[]): EnemyT
 function getPlayfieldBoundaryCollision(
   start: Point,
   direction: Point,
-  boundarySegments: ArenaBoundarySegment[]
+  boundarySegments: ArenaBoundarySegment[],
+  maxDistance: number
 ): WallCollision | null {
   const collisions: WallCollision[] = [];
 
@@ -744,7 +784,12 @@ function getPlayfieldBoundaryCollision(
     const distance = (toSegmentStart.x * segmentVector.y - toSegmentStart.y * segmentVector.x) / cross;
     const segmentInterpolation = (toSegmentStart.x * direction.y - toSegmentStart.y * direction.x) / cross;
 
-    if (distance <= Number.EPSILON || segmentInterpolation < 0 || segmentInterpolation > 1) {
+    if (
+      distance <= Number.EPSILON ||
+      distance > maxDistance + Number.EPSILON ||
+      segmentInterpolation < 0 ||
+      segmentInterpolation > 1
+    ) {
       continue;
     }
 
@@ -782,7 +827,7 @@ function getPlayfieldBoundaryCollision(
 }
 
 /** Computes the first collision against the container top or bottom boundary. */
-function getContainerBoundaryCollision(start: Point, direction: Point): WallCollision | null {
+function getContainerBoundaryCollision(start: Point, direction: Point, maxDistance: number): WallCollision | null {
   if (Math.abs(direction.y) <= Number.EPSILON) {
     return null;
   }
@@ -790,7 +835,7 @@ function getContainerBoundaryCollision(start: Point, direction: Point): WallColl
   const targetY = direction.y < 0 ? 0 : 1;
   const distance = (targetY - start.y) / direction.y;
 
-  if (distance <= Number.EPSILON) {
+  if (distance <= Number.EPSILON || distance > maxDistance + Number.EPSILON) {
     return null;
   }
 
@@ -813,10 +858,11 @@ function getContainerBoundaryCollision(start: Point, direction: Point): WallColl
 function getWallCollision(
   start: Point,
   direction: Point,
-  boundarySegments: ArenaBoundarySegment[]
-): WallCollision {
-  const playfieldBoundaryCollision = getPlayfieldBoundaryCollision(start, direction, boundarySegments);
-  const containerBoundaryCollision = getContainerBoundaryCollision(start, direction);
+  boundarySegments: ArenaBoundarySegment[],
+  maxDistance: number
+): WallCollision | null {
+  const playfieldBoundaryCollision = getPlayfieldBoundaryCollision(start, direction, boundarySegments, maxDistance);
+  const containerBoundaryCollision = getContainerBoundaryCollision(start, direction, maxDistance);
   const collisions = [playfieldBoundaryCollision, containerBoundaryCollision]
     .filter((collision): collision is WallCollision => collision !== null);
 
@@ -835,10 +881,6 @@ function getWallCollision(
     return closest;
   }, null);
 
-  if (!firstCollision) {
-    throw new Error("Unable to compute playback wall collision");
-  }
-
   return firstCollision;
 }
 
@@ -847,7 +889,8 @@ function getCircularCollision(
   start: Point,
   direction: Point,
   targets: CircularTarget[],
-  enemySequenceOrder: Map<string, number>
+  enemySequenceOrder: Map<string, number>,
+  maxDistance: number
 ): EnemyCollision | ObstacleCollision | null {
   const collisions: Array<EnemyCollision | ObstacleCollision> = [];
 
@@ -866,7 +909,7 @@ function getCircularCollision(
     const root = Math.sqrt(discriminant);
     const distance = -projection - root;
 
-    if (distance <= Number.EPSILON) {
+    if (distance <= Number.EPSILON || distance > maxDistance + Number.EPSILON) {
       continue;
     }
 
@@ -928,7 +971,8 @@ function getCircularCollision(
 function getFlipperCollision(
   start: Point,
   direction: Point,
-  flippers: FlipperTarget[]
+  flippers: FlipperTarget[],
+  maxDistance: number
 ): FlipperCollision | null {
   if (direction.y <= Number.EPSILON) {
     return null;
@@ -958,7 +1002,12 @@ function getFlipperCollision(
       Math.max(minDistanceY, maxDistanceY)
     );
 
-    if (distanceEntry <= Number.EPSILON || distanceEntry > distanceExit || distanceExit <= Number.EPSILON) {
+    if (
+      distanceEntry <= Number.EPSILON ||
+      distanceEntry > distanceExit ||
+      distanceExit <= Number.EPSILON ||
+      distanceEntry > maxDistance + Number.EPSILON
+    ) {
       continue;
     }
 
@@ -993,6 +1042,124 @@ function getFlipperCollision(
 
     return closest;
   }, null);
+}
+
+/** Integrates deterministic gravity in small steps until the next collision is reached. */
+function advanceToNextCollision(
+  start: Point,
+  initialVelocity: Point,
+  enemyEntities: EnemyTarget[],
+  obstacleEntities: ObstacleTarget[],
+  flipperEntities: FlipperTarget[],
+  boundarySegments: ArenaBoundarySegment[],
+  enemySequenceOrder: Map<string, number>,
+  maxIntegrationSteps: number
+): { pathSegments: MotionPathSegment[]; collision: WallCollision | EnemyCollision | ObstacleCollision | FlipperCollision; impactVelocity: Point } {
+  const pathSegments: MotionPathSegment[] = [];
+  const simulationStepSeconds = PLAYBACK_SIMULATION_STEP_MS / 1000;
+  let currentPoint = start;
+  let currentVelocity = initialVelocity;
+
+  for (let integrationStep = 0; integrationStep < maxIntegrationSteps; integrationStep += 1) {
+    const nextVelocity = shapeVelocityForGravity({
+      x: currentVelocity.x,
+      y: currentVelocity.y + PLAYBACK_GRAVITY_UNITS_PER_SECOND_SQUARED * simulationStepSeconds
+    }, simulationStepSeconds);
+    const averageVelocity = {
+      x: (currentVelocity.x + nextVelocity.x) / 2,
+      y: (currentVelocity.y + nextVelocity.y) / 2
+    };
+    const displacement = {
+      x: averageVelocity.x * simulationStepSeconds,
+      y: averageVelocity.y * simulationStepSeconds
+    };
+    const displacementDistance = getVectorLength(displacement.x, displacement.y);
+
+    if (displacementDistance <= Number.EPSILON) {
+      currentVelocity = nextVelocity;
+      continue;
+    }
+
+    const travelDirection = normalizeVector(displacement.x, displacement.y, normalizeVector(
+      currentVelocity.x,
+      currentVelocity.y,
+      { x: 0, y: -1 }
+    ));
+    const flipperCollision = getFlipperCollision(currentPoint, travelDirection, flipperEntities, displacementDistance);
+    const wallCollision = getWallCollision(currentPoint, travelDirection, boundarySegments, displacementDistance);
+    const circularCollision = getCircularCollision(
+      currentPoint,
+      travelDirection,
+      [...enemyEntities, ...obstacleEntities],
+      enemySequenceOrder,
+      displacementDistance
+    );
+    const firstCollision = [flipperCollision, circularCollision, wallCollision]
+      .filter((collision): collision is FlipperCollision | EnemyCollision | ObstacleCollision | WallCollision => collision !== null)
+      .reduce<FlipperCollision | EnemyCollision | ObstacleCollision | WallCollision | null>((closest, candidate) => {
+        if (
+          !closest ||
+          candidate.distance < closest.distance - Number.EPSILON ||
+          (
+            Math.abs(candidate.distance - closest.distance) <= Number.EPSILON &&
+            "flipper" in candidate &&
+            !("flipper" in closest)
+          )
+        ) {
+          return candidate;
+        }
+
+        return closest;
+      }, null);
+
+    if (firstCollision) {
+      const collisionProgress = firstCollision.distance / displacementDistance;
+      const collisionElapsedSeconds = simulationStepSeconds * collisionProgress;
+      const impactVelocity = shapeVelocityForGravity({
+        x: currentVelocity.x,
+        y: currentVelocity.y + PLAYBACK_GRAVITY_UNITS_PER_SECOND_SQUARED * collisionElapsedSeconds
+      }, collisionElapsedSeconds);
+
+      if (firstCollision.distance > Number.EPSILON) {
+        pathSegments.push({
+          from: currentPoint,
+          to: {
+            x: firstCollision.x,
+            y: firstCollision.y
+          },
+          speedMultiplier: Math.max(
+            getVectorLength(impactVelocity.x, impactVelocity.y) / PLAYBACK_BASE_VELOCITY_UNITS_PER_SECOND,
+            Number.EPSILON
+          )
+        });
+      }
+
+      return {
+        pathSegments,
+        collision: firstCollision,
+        impactVelocity
+      };
+    }
+
+    const nextPoint = {
+      x: clampNormalized(currentPoint.x + displacement.x),
+      y: clampNormalized(currentPoint.y + displacement.y)
+    };
+
+    pathSegments.push({
+      from: currentPoint,
+      to: nextPoint,
+      speedMultiplier: Math.max(
+        getVectorLength(averageVelocity.x, averageVelocity.y) / PLAYBACK_BASE_VELOCITY_UNITS_PER_SECOND,
+        Number.EPSILON
+      )
+    });
+
+    currentPoint = nextPoint;
+    currentVelocity = nextVelocity;
+  }
+
+  throw new Error("Playback gravity integration exceeded deterministic step budget before finding a collision");
 }
 
 /** Returns the primary timeline timestamp used to order mixed playback event types. */
@@ -1152,7 +1319,7 @@ function getStepBeatMs(step: MotionStep): number {
 }
 
 /** Builds a timing plan from motion content instead of forcing the replay into a fixed total duration. */
-function createStepTimingPlan(steps: MotionStep[]): { pathDurationsMs: number[]; finishBeatMs: number; durationMs: number } {
+function createStepTimingPlan(steps: MotionStep[]): { pathDurationsMs: number[][]; finishBeatMs: number; durationMs: number } {
   if (steps.length === 0) {
     return {
       pathDurationsMs: [],
@@ -1161,14 +1328,15 @@ function createStepTimingPlan(steps: MotionStep[]): { pathDurationsMs: number[];
     };
   }
 
-  const naturalPathDurationsMs = steps.map((step) => {
-    const distance = getVectorLength(step.to.x - step.from.x, step.to.y - step.from.y);
+  const naturalPathDurationsMs = steps.map((step) => step.pathSegments.map((pathSegment) => {
+    const distance = getVectorLength(pathSegment.to.x - pathSegment.from.x, pathSegment.to.y - pathSegment.from.y);
 
-    return calculatePathDurationMs(distance, step.speedMultiplier);
-  });
+    return calculatePathDurationMs(distance, pathSegment.speedMultiplier);
+  }));
   const fixedBeatTotalMs = steps.reduce((totalBeatMs, step) => totalBeatMs + getStepBeatMs(step), 0);
-  const naturalPathTotalMs = naturalPathDurationsMs.reduce((totalMs, durationMs) => totalMs + durationMs, 0);
-  const naturalPathBudgetMs = naturalPathTotalMs || steps.length;
+  const flattenedNaturalPathDurationsMs = naturalPathDurationsMs.flat();
+  const naturalPathTotalMs = flattenedNaturalPathDurationsMs.reduce((totalMs, durationMs) => totalMs + durationMs, 0);
+  const naturalPathBudgetMs = naturalPathTotalMs || flattenedNaturalPathDurationsMs.length;
   const minimumDurationMs = Math.max(PLAYBACK_MIN_DURATION_MS, 0);
   const maximumDurationMs = Math.max(PLAYBACK_MAX_DURATION_MS, minimumDurationMs);
   const naturalDurationMs = naturalPathTotalMs + fixedBeatTotalMs + PLAYBACK_FINISH_BEAT_MS;
@@ -1191,10 +1359,10 @@ function createStepTimingPlan(steps: MotionStep[]): { pathDurationsMs: number[];
 
   const availablePathBudgetMs = maximumDurationMs - fixedBeatTotalMs - PLAYBACK_FINISH_BEAT_MS;
 
-  if (availablePathBudgetMs <= steps.length) {
-    const minimumPathDurationsMs = steps.map(() => 1);
+  if (availablePathBudgetMs <= flattenedNaturalPathDurationsMs.length) {
+    const minimumPathDurationsMs = naturalPathDurationsMs.map((pathDurationsMs) => pathDurationsMs.map(() => 1));
     const durationMs =
-      minimumPathDurationsMs.reduce((totalMs, durationMs) => totalMs + durationMs, 0) +
+      minimumPathDurationsMs.flat().reduce((totalMs, durationMs) => totalMs + durationMs, 0) +
       fixedBeatTotalMs +
       PLAYBACK_FINISH_BEAT_MS;
 
@@ -1205,7 +1373,7 @@ function createStepTimingPlan(steps: MotionStep[]): { pathDurationsMs: number[];
     };
   }
 
-  const scaledPathDurationsMs = naturalPathDurationsMs.map((durationMs) => Math.max(Math.round(
+  const scaledPathDurationsMs = flattenedNaturalPathDurationsMs.map((durationMs) => Math.max(Math.round(
     (durationMs / naturalPathBudgetMs) * availablePathBudgetMs
   ), 1));
   let remainingAdjustmentMs =
@@ -1232,9 +1400,17 @@ function createStepTimingPlan(steps: MotionStep[]): { pathDurationsMs: number[];
   }
 
   const scaledPathTotalMs = scaledPathDurationsMs.reduce((totalMs, durationMs) => totalMs + durationMs, 0);
+  const regroupedPathDurationsMs: number[][] = [];
+  let pathDurationIndex = 0;
+
+  for (const step of steps) {
+    regroupedPathDurationsMs.push(
+      step.pathSegments.map(() => scaledPathDurationsMs[pathDurationIndex++] ?? 1)
+    );
+  }
 
   return {
-    pathDurationsMs: scaledPathDurationsMs,
+    pathDurationsMs: regroupedPathDurationsMs,
     finishBeatMs: PLAYBACK_FINISH_BEAT_MS,
     durationMs: scaledPathTotalMs + fixedBeatTotalMs + PLAYBACK_FINISH_BEAT_MS
   };
@@ -1285,12 +1461,15 @@ function createMotionTimeline(
     y: ballEntity.spawnY
   };
   const firstEnemy = enemySequence[0];
-  let currentDirection = normalizeVector(
+  const initialDirection = normalizeVector(
     (firstEnemy?.spawnX ?? 0.5) >= ballEntity.spawnX ? 0.42 : -0.42,
     -1,
     { x: 0.42, y: -1 }
   );
-  let currentSpeedMultiplier = 1;
+  let currentVelocity = {
+    x: initialDirection.x * PLAYBACK_BASE_VELOCITY_UNITS_PER_SECOND,
+    y: initialDirection.y * PLAYBACK_BASE_VELOCITY_UNITS_PER_SECOND
+  };
   let comboCount = 0;
   let totalDamage = 0n;
   let endReason = determineRunEndReason({
@@ -1300,43 +1479,22 @@ function createMotionTimeline(
     defeatedEnemyCount: 0,
     validScoringTargetCount: activeEnemyIds.size
   });
-  const maxSteps = Math.max(targetComboCount, 1) * 24;
+  const maxCollisionSteps = Math.max(targetComboCount, 1) * 24;
+  const maxIntegrationStepsPerCollision = Math.max(Math.ceil((requestedDurationMs / PLAYBACK_SIMULATION_STEP_MS) * 6), 90);
 
-  for (; endReason === null && steps.length < maxSteps; ) {
-    const flipperCollision = getFlipperCollision(currentPoint, currentDirection, flipperEntities);
-    const boundaryCollision = getWallCollision(
-      currentPoint,
-      currentDirection,
-      arena.playfieldBoundary.segments
-    );
+  for (; endReason === null && steps.length < maxCollisionSteps; ) {
     const activeEnemyEntities = enemyEntities.filter((entity) => activeEnemyIds.has(entity.id));
-    const circularCollision = getCircularCollision(
+    const motionStep = advanceToNextCollision(
       currentPoint,
-      currentDirection,
-      [...activeEnemyEntities, ...obstacleEntities],
-      enemySequenceOrder
+      currentVelocity,
+      activeEnemyEntities,
+      obstacleEntities,
+      flipperEntities,
+      arena.playfieldBoundary.segments,
+      enemySequenceOrder,
+      maxIntegrationStepsPerCollision
     );
-    const firstCollision = [flipperCollision, circularCollision, boundaryCollision]
-      .filter((collision): collision is FlipperCollision | EnemyCollision | ObstacleCollision | WallCollision => collision !== null)
-      .reduce<FlipperCollision | EnemyCollision | ObstacleCollision | WallCollision | null>((closest, candidate) => {
-        if (
-          !closest ||
-          candidate.distance < closest.distance - Number.EPSILON ||
-          (
-            Math.abs(candidate.distance - closest.distance) <= Number.EPSILON &&
-            "flipper" in candidate &&
-            !("flipper" in closest)
-          )
-        ) {
-          return candidate;
-        }
-
-        return closest;
-      }, null);
-
-    if (!firstCollision) {
-      throw new Error("Unable to resolve playback motion collision");
-    }
+    const firstCollision = motionStep.collision;
 
     let hit: SimulatedHit | undefined;
 
@@ -1364,29 +1522,41 @@ function createMotionTimeline(
     }
 
     steps.push({
-      from: currentPoint,
-      to: {
-        x: firstCollision.x,
-        y: firstCollision.y
-      },
+      pathSegments: motionStep.pathSegments,
       collision: firstCollision,
       hit,
-      speedMultiplier: currentSpeedMultiplier
+      impactVelocity: motionStep.impactVelocity
     });
 
     currentPoint = {
       x: firstCollision.x,
       y: firstCollision.y
     };
+    const impactSpeed = Math.max(
+      getVectorLength(motionStep.impactVelocity.x, motionStep.impactVelocity.y),
+      PLAYBACK_BASE_VELOCITY_UNITS_PER_SECOND
+    );
+
     if ("flipper" in firstCollision) {
-      currentDirection = firstCollision.direction;
-      currentSpeedMultiplier = firstCollision.speedMultiplier;
+      currentVelocity = clampVelocity({
+        x: firstCollision.direction.x * impactSpeed * firstCollision.speedMultiplier,
+        y: firstCollision.direction.y * impactSpeed * firstCollision.speedMultiplier
+      });
     } else {
-      const reflectedDirection = reflectDirection(currentDirection, firstCollision.normal);
-      currentDirection = "targetEntityId" in firstCollision
+      const impactDirection = normalizeVector(
+        motionStep.impactVelocity.x,
+        motionStep.impactVelocity.y,
+        initialDirection
+      );
+      const reflectedDirection = reflectDirection(impactDirection, firstCollision.normal);
+      const nextDirection = "targetEntityId" in firstCollision
         ? tuneWallReboundDirection(reflectedDirection, firstCollision.normal)
         : reflectedDirection;
-      currentSpeedMultiplier = 1;
+
+      currentVelocity = {
+        x: nextDirection.x * impactSpeed,
+        y: nextDirection.y * impactSpeed
+      };
     }
 
     if ("enemy" in firstCollision) {
@@ -1420,38 +1590,54 @@ function createMotionTimeline(
 
   for (let stepIndex = 0; stepIndex < steps.length; stepIndex += 1) {
     const step = steps[stepIndex];
-    const segmentStart = currentTimelineMs;
-    const segmentEnd = segmentStart + (timingPlan.pathDurationsMs[stepIndex] ?? 1);
+    const stepPathDurationsMs = timingPlan.pathDurationsMs[stepIndex] ?? [];
 
-    events.push({
-      kind: "BALL_PATH",
-      timelineStartMs: segmentStart,
-      timelineEndMs: segmentEnd,
-      entityId: ballEntity.id,
-      fromX: step.from.x,
-      fromY: step.from.y,
-      toX: step.to.x,
-      toY: step.to.y
-    });
+    for (let pathIndex = 0; pathIndex < step.pathSegments.length; pathIndex += 1) {
+      const pathSegment = step.pathSegments[pathIndex]!;
+      const segmentStart = currentTimelineMs;
+      const segmentEnd = segmentStart + (stepPathDurationsMs[pathIndex] ?? 1);
+
+      events.push({
+        kind: "BALL_PATH",
+        timelineStartMs: segmentStart,
+        timelineEndMs: segmentEnd,
+        entityId: ballEntity.id,
+        fromX: pathSegment.from.x,
+        fromY: pathSegment.from.y,
+        toX: pathSegment.to.x,
+        toY: pathSegment.to.y
+      });
+
+      currentTimelineMs = segmentEnd;
+    }
+
+    const collisionPoint = "enemy" in step.collision
+      ? { x: step.collision.x, y: step.collision.y }
+      : "obstacle" in step.collision
+        ? { x: step.collision.x, y: step.collision.y }
+        : "flipper" in step.collision
+          ? { x: step.collision.x, y: step.collision.y }
+          : { x: step.collision.x, y: step.collision.y };
+    const collisionTimestampMs = currentTimelineMs;
 
     if ("enemy" in step.collision) {
       events.push(
         {
           kind: "COLLISION",
-          timelineTimestampMs: segmentEnd,
+          timelineTimestampMs: collisionTimestampMs,
           sourceEntityId: ballEntity.id,
           targetEntityId: step.collision.enemy.id,
           collisionKind: "BALL_ENEMY",
-          x: step.to.x,
-          y: step.to.y
+          x: collisionPoint.x,
+          y: collisionPoint.y
         },
         {
           kind: "DAMAGE",
-          timelineTimestampMs: segmentEnd,
+          timelineTimestampMs: collisionTimestampMs,
           sourceEntityId: ballEntity.id,
           targetEntityId: step.collision.enemy.id,
-          x: step.to.x,
-          y: step.to.y,
+          x: collisionPoint.x,
+          y: collisionPoint.y,
           damage: step.hit?.damage.toString() ?? "0",
           comboAfter: step.hit?.comboAfter ?? 0,
           isCrit: step.hit?.isCrit ?? false
@@ -1461,22 +1647,22 @@ function createMotionTimeline(
       if (step.hit?.defeatedEnemyId) {
         events.push(
           createEnemyDefeatedTrigger(
-            segmentEnd,
+            collisionTimestampMs,
             ballEntity.id,
             step.hit.defeatedEnemyId,
-            step.to.x,
-            step.to.y
+            collisionPoint.x,
+            collisionPoint.y
           )
         );
       }
 
       events.push(
         createImpactBurstTrigger(
-          segmentEnd,
+          collisionTimestampMs,
           ballEntity.id,
           step.collision.enemy.id,
-          step.to.x,
-          step.to.y,
+          collisionPoint.x,
+          collisionPoint.y,
           step.hit?.damage ?? 0n
         )
       );
@@ -1484,11 +1670,11 @@ function createMotionTimeline(
       if (step.hit && PLAYBACK_COMBO_MILESTONE_THRESHOLDS.has(step.hit.comboAfter)) {
         events.push(
           createComboMilestoneTrigger(
-            segmentEnd,
+            collisionTimestampMs,
             ballEntity.id,
             step.collision.enemy.id,
-            step.to.x,
-            step.to.y,
+            collisionPoint.x,
+            collisionPoint.y,
             step.hit.comboAfter
           )
         );
@@ -1496,7 +1682,7 @@ function createMotionTimeline(
     } else {
       events.push({
         kind: "COLLISION",
-        timelineTimestampMs: segmentEnd,
+        timelineTimestampMs: collisionTimestampMs,
         sourceEntityId: ballEntity.id,
         targetEntityId: "flipper" in step.collision
           ? step.collision.flipper.id
@@ -1508,12 +1694,12 @@ function createMotionTimeline(
           : "obstacle" in step.collision
             ? "BALL_OBSTACLE"
             : "BALL_WALL",
-        x: step.to.x,
-        y: step.to.y
+        x: collisionPoint.x,
+        y: collisionPoint.y
       });
     }
 
-    currentTimelineMs = segmentEnd + getStepBeatMs(step);
+    currentTimelineMs += getStepBeatMs(step);
   }
 
   return {

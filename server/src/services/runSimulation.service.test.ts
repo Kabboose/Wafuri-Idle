@@ -38,10 +38,6 @@ function getPathDirection(event: Extract<PlaybackEvent, { kind: "BALL_PATH" }>) 
   };
 }
 
-function getPathLength(event: Extract<PlaybackEvent, { kind: "BALL_PATH" }>): number {
-  return Math.sqrt((event.toX - event.fromX) ** 2 + (event.toY - event.fromY) ** 2);
-}
-
 function degreesToRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;
 }
@@ -335,7 +331,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   const wallCollisionEvents = collisionEvents.filter((event) => event.collisionKind === "BALL_WALL");
   const damageEvents = result.playback.events.filter((event) => event.kind === "DAMAGE");
   const triggerEvents = result.playback.events.filter((event) => event.kind === "TRIGGER");
-  assert.equal(ballPathEvents.length, collisionEvents.length);
+  assert.ok(ballPathEvents.length > collisionEvents.length);
   assert.equal(enemyCollisionEvents.length, 10);
   assert.ok(obstacleCollisionEvents.length >= 1);
   assert.ok(wallCollisionEvents.length >= 1);
@@ -531,9 +527,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
       assert.ok(
         normalComponent >= GAME_CONFIG.run.playbackWallReboundMinNormalComponent - 0.000001
       );
-      assert.ok(
-        normalComponent <= GAME_CONFIG.run.playbackWallReboundMaxNormalComponent + 0.000001
-      );
+      assert.ok(normalComponent <= 1 + 0.000001);
     }
   }
 
@@ -648,58 +642,35 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
   for (let index = 1; index < ballPathEvents.length; index += 1) {
     const previousPath = ballPathEvents[index - 1];
     const nextPath = ballPathEvents[index];
-    const collisionBetweenPaths = result.playback.events.find((event) => {
-      if (event.kind !== "COLLISION") {
-        return false;
-      }
-
-      return (
-        event.timelineTimestampMs === previousPath.timelineEndMs &&
-        Math.abs(event.x - previousPath.toX) < 0.000001 &&
-        Math.abs(event.y - previousPath.toY) < 0.000001 &&
-        Math.abs(event.x - nextPath.fromX) < 0.000001 &&
-        Math.abs(event.y - nextPath.fromY) < 0.000001 &&
-        nextPath.timelineStartMs >= event.timelineTimestampMs
-      );
-    });
 
     assert.equal(previousPath.toX, nextPath.fromX);
     assert.equal(previousPath.toY, nextPath.fromY);
-    assert.ok(collisionBetweenPaths, "path direction changed without an intervening collision");
+    assert.ok(nextPath.timelineStartMs >= previousPath.timelineEndMs);
   }
 
-  const unitSpeedPathEvents = ballPathEvents.filter((pathEvent) => {
-    const pathIndex = result.playback.events.findIndex((event) => event === pathEvent);
-    const previousCollision = [...result.playback.events.slice(0, pathIndex)]
-      .reverse()
-      .find((event) => event.kind === "COLLISION");
+  const gravityArcSamples = ballPathEvents.slice(1).flatMap((pathEvent, index) => {
+    const previousPathEvent = ballPathEvents[index]!;
+    const collisionBetweenSegments = result.playback.events.find((event) => (
+      event.kind === "COLLISION" &&
+      event.timelineTimestampMs === previousPathEvent.timelineEndMs &&
+      event.timelineTimestampMs <= pathEvent.timelineStartMs &&
+      Math.abs(event.x - previousPathEvent.toX) < 0.000001 &&
+      Math.abs(event.y - previousPathEvent.toY) < 0.000001
+    ));
 
-    return previousCollision?.kind !== "COLLISION" || previousCollision.collisionKind !== "BALL_FLIPPER";
-  });
-
-  const unitSpeedSamples = unitSpeedPathEvents.map((pathEvent) => ({
-    length: getPathLength(pathEvent),
-    durationMs: pathEvent.timelineEndMs - pathEvent.timelineStartMs,
-    playbackUnitsPerSecond: (getPathLength(pathEvent) / (pathEvent.timelineEndMs - pathEvent.timelineStartMs)) * 1000
-  })).sort((left, right) => left.length - right.length);
-  const playbackSpeedRange = unitSpeedSamples.reduce((range, sample) => ({
-    min: Math.min(range.min, sample.playbackUnitsPerSecond),
-    max: Math.max(range.max, sample.playbackUnitsPerSecond)
-  }), {
-    min: Number.POSITIVE_INFINITY,
-    max: 0
-  });
-
-  assert.ok(unitSpeedSamples.length > 0);
-  assert.ok(playbackSpeedRange.max - playbackSpeedRange.min <= 0.05);
-
-  for (let index = 1; index < unitSpeedSamples.length; index += 1) {
-    if (unitSpeedSamples[index]!.length - unitSpeedSamples[index - 1]!.length <= 0.005) {
-      continue;
+    if (collisionBetweenSegments) {
+      return [];
     }
 
-    assert.ok(unitSpeedSamples[index]!.durationMs >= unitSpeedSamples[index - 1]!.durationMs);
-  }
+    return [{
+      previousDirection: getPathDirection(previousPathEvent),
+      nextDirection: getPathDirection(pathEvent)
+    }];
+  });
+
+  assert.ok(
+    gravityArcSamples.some((sample) => sample.nextDirection.y > sample.previousDirection.y + 0.01)
+  );
 });
 
 test("simulateRun applies crit logic deterministically", () => {
