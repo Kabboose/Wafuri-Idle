@@ -199,7 +199,7 @@ export function RunReplay({
           ) : null}
 
           <div
-            className="run-replay-path-layer"
+            className={`run-replay-path-layer ${frame.activeFlipperCollision ? "is-energized" : ""}`}
             aria-hidden="true"
             style={{
               clipPath: playfieldClipPath
@@ -267,7 +267,7 @@ export function RunReplay({
 
             {frame.ballPosition ? (
               <div
-                className={`replay-entity replay-ball ${frame.activeCollision ? "is-impacting" : ""}`}
+                className={`replay-entity replay-ball ${frame.activeCollision ? "is-impacting" : ""} ${frame.activeFlipperCollision ? "is-flipper-launched" : ""}`}
                 style={{
                   left: `${frame.ballPosition.x * 100}%`,
                   top: `${frame.ballPosition.y * 100}%`
@@ -278,7 +278,7 @@ export function RunReplay({
             {frame.worldCues.map((cue) => (
               <div
                 key={cue.id}
-                className={`replay-world-cue replay-world-cue-${cue.kind.toLowerCase()} ${cue.emphasis === "strong" ? "is-strong" : ""} ${cue.isCrit ? "is-crit" : ""}`}
+                className={`replay-world-cue replay-world-cue-${cue.kind.toLowerCase()} ${cue.collisionKind ? `is-${cue.collisionKind.toLowerCase()}` : ""} ${cue.emphasis === "strong" ? "is-strong" : ""} ${cue.isCrit ? "is-crit" : ""}`}
                 style={{
                   left: `${cue.x * 100}%`,
                   top: `${cue.y * 100}%`

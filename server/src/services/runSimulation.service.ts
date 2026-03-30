@@ -19,14 +19,18 @@ const BASE_CRIT_CHANCE_SCALE = GAME_CONFIG.run.baseCritChanceScale;
 const PLAYBACK_COLLISION_BEAT_MS = GAME_CONFIG.run.playbackCollisionBeatMs;
 const PLAYBACK_COMBO_MILESTONE_THRESHOLDS = new Set<number>(GAME_CONFIG.run.playbackComboMilestoneThresholds);
 const PLAYBACK_DEFEAT_BEAT_MS = GAME_CONFIG.run.playbackDefeatBeatMs;
+const PLAYBACK_ENEMY_COLLISION_BEAT_MS = GAME_CONFIG.run.playbackEnemyCollisionBeatMs;
 const PLAYBACK_ENEMY_COLLISION_RADIUS = GAME_CONFIG.run.playbackEnemyCollisionRadius;
 const PLAYBACK_ENEMY_INITIAL_HEALTH = BigInt(GAME_CONFIG.run.playbackEnemyInitialHealth);
+const PLAYBACK_ENEMY_VELOCITY_RETENTION = GAME_CONFIG.run.playbackEnemyVelocityRetention;
 const PLAYBACK_BASE_VELOCITY_UNITS_PER_SECOND = GAME_CONFIG.run.playbackBaseVelocityUnitsPerSecond;
 const PLAYBACK_FINISH_BEAT_MS = GAME_CONFIG.run.playbackFinishBeatMs;
+const PLAYBACK_FLIPPER_COLLISION_BEAT_MS = GAME_CONFIG.run.playbackFlipperCollisionBeatMs;
 const PLAYBACK_FLIPPER_HEIGHT = GAME_CONFIG.run.playbackFlipperHeight;
 const PLAYBACK_FLIPPER_INSET_X = GAME_CONFIG.run.playbackFlipperInsetX;
 const PLAYBACK_FLIPPER_RESTING_ANGLE_DEGREES = GAME_CONFIG.run.playbackFlipperRestingAngleDegrees;
 const PLAYBACK_FLIPPER_ACTIVE_ANGLE_DEGREES = GAME_CONFIG.run.playbackFlipperActiveAngleDegrees;
+const PLAYBACK_FLIPPER_IMPACT_BOOST_MULTIPLIER = GAME_CONFIG.run.playbackFlipperImpactBoostMultiplier;
 const PLAYBACK_FLIPPER_INNER_HORIZONTAL_DIRECTION = GAME_CONFIG.run.playbackFlipperInnerHorizontalDirection;
 const PLAYBACK_FLIPPER_OUTER_HORIZONTAL_DIRECTION = GAME_CONFIG.run.playbackFlipperOuterHorizontalDirection;
 const PLAYBACK_FLIPPER_RELAUNCH_SPEED_MULTIPLIER = GAME_CONFIG.run.playbackFlipperRelaunchSpeedMultiplier;
@@ -40,6 +44,8 @@ const OBSTACLE_PLACEMENT_PADDING = GAME_CONFIG.run.obstaclePlacementPadding;
 const PLAYFIELD_PLACEMENT_INSET = GAME_CONFIG.run.playfieldPlacementInset;
 const PLAYBACK_GRAVITY_UNITS_PER_SECOND_SQUARED = GAME_CONFIG.run.playbackGravityUnitsPerSecondSquared;
 const PLAYBACK_HORIZONTAL_VELOCITY_DAMPING_PER_SECOND = GAME_CONFIG.run.playbackHorizontalVelocityDampingPerSecond;
+const PLAYBACK_OBSTACLE_DAMPING_ACTIVATION_SPEED_MULTIPLIER = GAME_CONFIG.run.playbackObstacleDampingActivationSpeedMultiplier;
+const PLAYBACK_INITIAL_OBSTACLE_VELOCITY_RETENTION = GAME_CONFIG.run.playbackInitialObstacleVelocityRetention;
 const PLAYBACK_MAX_DURATION_MS = GAME_CONFIG.run.playbackMaxDurationMs;
 const PLAYBACK_MAX_DOWNWARD_VELOCITY_UNITS_PER_SECOND = GAME_CONFIG.run.playbackMaxDownwardVelocityUnitsPerSecond;
 const PLAYBACK_MAX_VELOCITY_UNITS_PER_SECOND = GAME_CONFIG.run.playbackMaxVelocityUnitsPerSecond;
@@ -1316,6 +1322,14 @@ function calculatePathDurationMs(distance: number, speedMultiplier: number): num
 
 /** Returns the deterministic pause to apply immediately after a collision step. */
 function getStepBeatMs(step: MotionStep): number {
+  if ("flipper" in step.collision) {
+    return PLAYBACK_FLIPPER_COLLISION_BEAT_MS;
+  }
+
+  if ("enemy" in step.collision) {
+    return step.hit?.defeatedEnemyId ? PLAYBACK_DEFEAT_BEAT_MS : PLAYBACK_ENEMY_COLLISION_BEAT_MS;
+  }
+
   return step.hit?.defeatedEnemyId ? PLAYBACK_DEFEAT_BEAT_MS : PLAYBACK_COLLISION_BEAT_MS;
 }
 
@@ -1480,7 +1494,7 @@ function createMotionTimeline(
     defeatedEnemyCount: 0,
     validScoringTargetCount: activeEnemyIds.size
   });
-  const maxCollisionSteps = Math.max(targetComboCount, 1) * 200;
+  const maxCollisionSteps = Math.max(targetComboCount, 1) * 1_000;
   const maxIntegrationStepsPerCollision = Math.max(Math.ceil((requestedDurationMs / PLAYBACK_SIMULATION_STEP_MS) * 6), 90);
   let previousCollisionWasObstacle = false;
 
@@ -1541,8 +1555,8 @@ function createMotionTimeline(
 
     if ("flipper" in firstCollision) {
       currentVelocity = clampVelocity({
-        x: firstCollision.direction.x * impactSpeed * firstCollision.speedMultiplier,
-        y: firstCollision.direction.y * impactSpeed * firstCollision.speedMultiplier
+        x: firstCollision.direction.x * impactSpeed * firstCollision.speedMultiplier * PLAYBACK_FLIPPER_IMPACT_BOOST_MULTIPLIER,
+        y: firstCollision.direction.y * impactSpeed * firstCollision.speedMultiplier * PLAYBACK_FLIPPER_IMPACT_BOOST_MULTIPLIER
       });
     } else {
       const impactDirection = normalizeVector(
@@ -1555,9 +1569,15 @@ function createMotionTimeline(
         ? tuneWallReboundDirection(reflectedDirection, firstCollision.normal)
         : reflectedDirection;
       const retainedSpeed = "obstacle" in firstCollision
-        ? (previousCollisionWasObstacle && impactSpeed > PLAYBACK_BASE_VELOCITY_UNITS_PER_SECOND * 1.2
-            ? impactSpeed * PLAYBACK_OBSTACLE_VELOCITY_RETENTION
+        ? (impactSpeed > PLAYBACK_BASE_VELOCITY_UNITS_PER_SECOND * PLAYBACK_OBSTACLE_DAMPING_ACTIVATION_SPEED_MULTIPLIER
+            ? impactSpeed * (
+              previousCollisionWasObstacle
+                ? PLAYBACK_OBSTACLE_VELOCITY_RETENTION
+                : PLAYBACK_INITIAL_OBSTACLE_VELOCITY_RETENTION
+            )
             : impactSpeed)
+        : "enemy" in firstCollision
+          ? impactSpeed * PLAYBACK_ENEMY_VELOCITY_RETENTION
         : impactSpeed;
 
       currentVelocity = clampVelocity({

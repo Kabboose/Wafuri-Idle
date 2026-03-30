@@ -483,6 +483,12 @@ button:active {
   animation: ball-impact 140ms ease-out;
 }
 
+.replay-ball.is-flipper-launched {
+  box-shadow:
+    0 0 22px rgba(96, 165, 250, 0.34),
+    0 0 10px rgba(125, 211, 252, 0.24);
+}
+
 .replay-enemy {
   z-index: 2;
   width: 28px;
@@ -590,6 +596,32 @@ button:active {
   animation: collision-flash 180ms ease-out;
 }
 
+.replay-world-cue-collision.is-ball_wall {
+  background: rgba(226, 232, 240, 0.16);
+  border-color: rgba(226, 232, 240, 0.6);
+}
+
+.replay-world-cue-collision.is-ball_obstacle {
+  background: rgba(148, 163, 184, 0.2);
+  border-color: rgba(226, 232, 240, 0.72);
+  box-shadow: 0 0 18px rgba(148, 163, 184, 0.18);
+}
+
+.replay-world-cue-collision.is-ball_enemy {
+  background: rgba(248, 113, 113, 0.18);
+  border-color: rgba(252, 165, 165, 0.72);
+  box-shadow: 0 0 18px rgba(239, 68, 68, 0.18);
+}
+
+.replay-world-cue-collision.is-ball_flipper {
+  width: 28px;
+  height: 28px;
+  background: rgba(251, 191, 36, 0.22);
+  border-color: rgba(250, 204, 21, 0.88);
+  box-shadow: 0 0 26px rgba(251, 191, 36, 0.28);
+  animation: collision-flash 210ms ease-out;
+}
+
 .replay-world-cue-damage {
   background: rgba(15, 23, 42, 0.88);
   border: 1px solid rgba(248, 250, 252, 0.18);
@@ -608,6 +640,7 @@ button:active {
 .replay-world-cue-enemy_defeated {
   background: rgba(220, 38, 38, 0.85);
   border: 1px solid rgba(254, 202, 202, 0.32);
+  animation: damage-popup 460ms cubic-bezier(0.18, 0.9, 0.24, 1);
 }
 
 .replay-world-cue.is-strong {
@@ -617,6 +650,11 @@ button:active {
 .replay-world-cue.is-crit {
   color: #fde68a;
   border-color: rgba(251, 191, 36, 0.55);
+}
+
+.run-replay-path-layer.is-energized .run-replay-path-segment {
+  opacity: 0.82;
+  box-shadow: 0 0 14px rgba(96, 165, 250, 0.18);
 }
 
 .run-replay-summary {

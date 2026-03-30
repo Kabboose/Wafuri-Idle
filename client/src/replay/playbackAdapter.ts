@@ -10,6 +10,7 @@ import type {
 export type WorldCue = {
   id: string;
   kind: "COLLISION" | "DAMAGE" | "IMPACT_BURST" | "ENEMY_DEFEATED";
+  collisionKind?: PlaybackCollisionEvent["collisionKind"];
   x: number;
   y: number;
   label?: string;
@@ -48,6 +49,16 @@ const FLIPPER_ACTIVE_LIFETIME_MS = 120;
 const DAMAGE_CUE_LIFETIME_MS = 480;
 const WORLD_TRIGGER_CUE_LIFETIME_MS = 320;
 const UI_CUE_LIFETIME_MS = 700;
+
+/** Returns the visible lifetime for a collision cue based on its authored collision kind. */
+function getCollisionCueLifetimeMs(event: PlaybackCollisionEvent): number {
+  return event.collisionKind === "BALL_FLIPPER" ? 210 : COLLISION_CUE_LIFETIME_MS;
+}
+
+/** Returns the visible lifetime for a world trigger cue based on its authored trigger kind. */
+function getWorldTriggerCueLifetimeMs(event: PlaybackTriggerEvent): number {
+  return event.triggerKind === "ENEMY_DEFEATED" ? 420 : WORLD_TRIGGER_CUE_LIFETIME_MS;
+}
 
 /** Clamps the playback cursor into the run's supported timeline. */
 function clampTimelineMs(playback: RunPlayback, timelineMs: number): number {
@@ -98,9 +109,10 @@ function mapCollisionCue(event: PlaybackCollisionEvent): WorldCue {
   return {
     id: `collision:${event.sourceEntityId}:${event.targetEntityId}:${event.timelineTimestampMs}`,
     kind: "COLLISION",
+    collisionKind: event.collisionKind,
     x: event.x,
     y: event.y,
-    emphasis: "normal"
+    emphasis: event.collisionKind === "BALL_FLIPPER" ? "strong" : "normal"
   };
 }
 
@@ -208,7 +220,7 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
   );
   const activeCollisionEvents = playback.events.filter(
     (event): event is PlaybackCollisionEvent =>
-      event.kind === "COLLISION" && isCueActive(event.timelineTimestampMs, clampedTimelineMs, COLLISION_CUE_LIFETIME_MS)
+      event.kind === "COLLISION" && isCueActive(event.timelineTimestampMs, clampedTimelineMs, getCollisionCueLifetimeMs(event))
   );
   const activeFlipperCollisionEvents = playback.events.filter(
     (event): event is PlaybackCollisionEvent =>
@@ -226,7 +238,7 @@ export function derivePlaybackFrame(playback: RunPlayback, timelineMs: number): 
       isCueActive(
         event.timelineTimestampMs,
         clampedTimelineMs,
-        event.placement === "WORLD" ? WORLD_TRIGGER_CUE_LIFETIME_MS : UI_CUE_LIFETIME_MS
+        event.placement === "WORLD" ? getWorldTriggerCueLifetimeMs(event) : UI_CUE_LIFETIME_MS
       )
   );
 
