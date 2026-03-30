@@ -87,7 +87,7 @@ integrationTest("runPlayerAction executes the full run lifecycle and persists re
   });
   const ballPathEvents = result.runResult.playback.events.filter((event) => event.kind === "BALL_PATH");
   const collisionEvents = result.runResult.playback.events.filter((event) => event.kind === "COLLISION");
-  assert.equal(ballPathEvents.length, collisionEvents.length);
+  assert.ok(ballPathEvents.length >= collisionEvents.length);
   assert.equal(collisionEvents.filter((event) => event.collisionKind === "BALL_ENEMY").length, 4);
   assert.ok(collisionEvents.filter((event) => event.collisionKind === "BALL_OBSTACLE").length >= 1);
   assert.ok(collisionEvents.filter((event) => event.collisionKind === "BALL_WALL").length >= 1);

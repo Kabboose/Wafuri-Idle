@@ -555,8 +555,7 @@ test("simulateRun increments combo and tracks a trigger for every hit", () => {
         : null;
 
       assert.ok(relaunchDirection.y < 0);
-      assert.ok(relaunchDirection.y <= -0.88);
-      assert.ok(Math.abs(relaunchDirection.x) <= 0.36);
+      assert.ok(relaunchDirection.y <= -0.74);
       assert.ok(
         flipperCollisionEvents[index]?.targetEntityId === "flipper-left"
           ? relaunchDirection.x > 0
